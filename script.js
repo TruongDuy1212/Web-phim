@@ -10,19 +10,93 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 2. Tạo Form Đăng nhập / Đăng ký ngầm vào HTML nếu chưa có
     createAuthModalHTML();
 
-    // 3. Tải phim và dựng Slide Banner
-    await loadAllMovies();
+    // 3. Tự động nhận diện trang để chạy logic đúng chỗ
+    const isDetailPage = window.location.pathname.includes('detail.html') || document.getElementById('episode-list') || document.querySelector('.choose-episode-grid');
 
-    // 4. Lắng nghe ô tìm kiếm
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', async (e) => {
-            if (e.key === 'Enter') await handleSearch();
-        });
+    if (isDetailPage) {
+        // --- LOGIC DÀNH RIÊNG CHO TRANG CHI TIẾT ---
+        await loadMovieDetail();
+    } else {
+        // --- LOGIC DÀNH RIÊNG CHO TRANG CHỦ ---
+        await loadAllMovies();
+
+        // Lắng nghe ô tìm kiếm (chỉ chạy ở trang chủ)
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') await handleSearch();
+            });
+        }
     }
 });
 
-// Hàm tải toàn bộ dữ liệu từ Render API thật
+// --- CHI TIẾT PHIM (Sửa lỗi mất Poster & Không có tập phim) ---
+async function loadMovieDetail() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const movieSlug = urlParams.get('slug');
+
+    if (!movieSlug) {
+        console.error("Không tìm thấy mã phim slug trên đường dẫn!");
+        return;
+    }
+
+    try {
+        // Gọi API Render lấy chi tiết mô tả và tập phim
+        const response = await fetch(`https://cinematic-3gsh.onrender.com/api/movie-detail?slug=${movieSlug}`);
+        const data = await response.json();
+
+        // 1. Đổ mô tả phim
+        const descElement = document.getElementById('modal-desc') || document.querySelector('.content-text') || document.querySelector('p');
+        if (descElement) descElement.innerText = data.description;
+
+        // 2. Đổ danh sách tập phim để bấm xem
+        const epListContainer = document.getElementById('episode-list') || document.querySelector('.choose-episode-grid') || document.getElementById('episodeContainer');
+        if (epListContainer) {
+            epListContainer.innerHTML = '';
+            if (!data.episodes || data.episodes.length === 0) {
+                epListContainer.innerHTML = '<p style="color:#aaa; padding:10px;">Phim đang cập nhật tập mới...</p>';
+            } else {
+                data.episodes.forEach(ep => {
+                    const btn = document.createElement('button');
+                    btn.className = 'ep-btn';
+                    btn.style = "padding: 8px 16px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; margin: 5px; cursor: pointer; font-weight: bold;";
+                    btn.innerText = ep.name;
+                    
+                    btn.onclick = () => {
+                        let player = document.getElementById('video-iframe') || document.getElementById('player');
+                        let playerSection = document.getElementById('video-player-section') || document.querySelector('.player-container');
+                        if (player) {
+                            player.src = ep.link;
+                            if (playerSection) playerSection.style.display = 'block';
+                            player.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    };
+                    epListContainer.appendChild(btn);
+                });
+            }
+        }
+
+        // 3. Đổ Poster ảnh lớn và Tên phim (Ép lấy từ API gốc nếu giao diện bị Loading...)
+        const posterImg = document.getElementById('modal-img') || document.querySelector('.poster-main-img') || document.querySelector('.poster img');
+        const titleElement = document.getElementById('modal-title') || document.querySelector('.movie-detail-info h1') || document.querySelector('.title-detail');
+        
+        const rawRes = await fetch(`https://ophim1.com/phim/${movieSlug}`);
+        const rawData = await rawRes.json();
+        if (rawData.movie) {
+            if (titleElement) titleElement.innerText = rawData.movie.name;
+            if (posterImg) {
+                let imgUrl = rawData.movie.thumb_url;
+                if (!imgUrl.startsWith('http')) imgUrl = `https://img.ophim.live/uploads/movies/${imgUrl}`;
+                posterImg.src = imgUrl;
+            }
+        }
+
+    } catch (error) {
+        console.error("Lỗi khi tải chi tiết phim từ Render:", error);
+    }
+}
+
+// --- TẢI PHIM TRANG CHỦ ---
 async function loadAllMovies() {
     const grids = {
         new: document.getElementById('newMoviesGrid'),
@@ -38,7 +112,6 @@ async function loadAllMovies() {
         const response = await fetch('https://cinematic-3gsh.onrender.com/api/movies');
         const data = await response.json();
 
-        // Cài đặt danh sách cho Slide Banner lớn
         if (data.newMovies && data.newMovies.length > 0) {
             hotMoviesList = data.newMovies.slice(0, 5); 
             currentHeroIndex = 0;
@@ -46,7 +119,6 @@ async function loadAllMovies() {
             startHeroAutoplay();
         }
 
-        // Đổ dữ liệu phim vào các hàng Grid chuẩn theo ID gốc của Duy
         renderRow(data.newMovies, grids.new);
         renderRow(data.phimTrungQuoc, grids.china);
         renderRow(data.phimHanQuoc, grids.korea);
@@ -54,7 +126,7 @@ async function loadAllMovies() {
         renderRow(data.phimLe, grids.single);
         renderRow(data.anime, grids.anime);
 
-        // Bốc riêng danh mục Kinh Dị từ API ngầm
+        // Danh mục kinh dị riêng
         try {
             const horrorRes = await fetch('https://ophim1.com/v1/api/the-loai/kinh-di?page=1');
             const horrorData = await horrorRes.json();
@@ -72,7 +144,6 @@ async function loadAllMovies() {
     }
 }
 
-// Hàm render hàng phim dùng chung
 function renderRow(movies, gridElement) {
     if (!gridElement) return;
     gridElement.innerHTML = '';
@@ -84,38 +155,29 @@ function renderRow(movies, gridElement) {
         const card = document.createElement('div');
         card.className = 'movie-card';
         const labelText = movie.label ? movie.label.split(' - ')[0] : 'HD';
-        const favClass = isFavorited(movie.slug) ? 'active' : '';
 
         card.innerHTML = `
             <span class="label">${labelText}</span>
-            <span class="fav-badge ${favClass}" data-slug="${movie.slug}">❤️</span>
+            <span class="fav-badge">❤️</span>
             <img src="${movie.image_url}" alt="${movie.title}">
             <span class="episode-badge">FULL</span>
             <div class="movie-title">${movie.title}</div>
         `;
 
-        card.querySelector('.fav-badge').onclick = (e) => {
-            e.stopPropagation();
-            toggleFavorite(movie);
-            e.target.classList.toggle('active');
-        };
-
-        card.onclick = () => openPlayerBySlug(movie.slug);
+        card.onclick = () => window.location.href = `detail.html?slug=${movie.slug}`;
         gridElement.appendChild(card);
     });
 }
 
-// --- HÀM RENDER HERO BANNER 2 LỚP HIỂN THỊ TRỌN POSTER ---
+// --- BANNER TRANG CHỦ ---
 async function renderHeroSlide(index) {
     if (hotMoviesList.length === 0) return;
     const movie = hotMoviesList[index];
     try {
         const rawRes = await fetch(`https://ophim1.com/phim/${movie.slug}`);
-        const rawData = rawRes.json ? await rawRes.json() : rawRes;
+        const rawData = await rawRes.json();
         const movieDetail = rawData.movie || {};
 
-        const directorText = movieDetail.director ? movieDetail.director.join(', ') : 'Đang cập nhật';
-        const actorText = movieDetail.actor ? movieDetail.actor.join(', ') : 'Đang cập nhật';
         const descriptionText = movieDetail.content ? movieDetail.content.replace(/<[^>]*>/g, '').slice(0, 180) : 'Nội dung bộ phim bom tấn...';
 
         const heroBanner = document.getElementById('heroBanner');
@@ -129,30 +191,12 @@ async function renderHeroSlide(index) {
                     <p>${descriptionText}...</p>
                     <div class="hero-buttons">
                         <button class="btn-hero-vip play" id="heroPlayBtn">▶ PLAY</button>
-                        <button class="btn-hero-vip fav" id="heroFavBtn">❤ YÊU THÍCH</button>
-                    </div>
-                    <div class="hero-meta-info">
-                        <div class="hero-meta-item">🎬 <strong>Đạo diễn:</strong> ${directorText}</div>
-                        <div class="hero-meta-item">⭐ <strong>Diễn viên:</strong> ${actorText}</div>
                     </div>
                 </div>
                 <img src="${movie.image_url}" class="hero-poster-main" alt="${movie.title}">
                 <button class="hero-arrow hero-arrow-right" onclick="changeHeroSlide(1); event.stopPropagation();">❯</button>
             `;
-            
-            document.getElementById('heroPlayBtn').onclick = () => openPlayerBySlug(movie.slug);
-            
-            const heroFavBtn = document.getElementById('heroFavBtn');
-            if (isFavorited(movie.slug)) {
-                heroFavBtn.innerHTML = '❤ ĐÃ LƯU TỦ';
-                heroFavBtn.style.background = 'rgba(255, 204, 0, 0.2)';
-            }
-            heroFavBtn.onclick = () => {
-                toggleFavorite(movie);
-                const check = isFavorited(movie.slug);
-                heroFavBtn.innerHTML = check ? '❤ ĐÃ LƯU TỦ' : '❤ YÊU THÍCH';
-                heroFavBtn.style.background = check ? 'rgba(255, 204, 0, 0.2)' : 'rgba(0, 0, 0, 0.6)';
-            };
+            document.getElementById('heroPlayBtn').onclick = () => window.location.href = `detail.html?slug=${movie.slug}`;
         }
     } catch (err) { console.log(err); }
 }
@@ -174,12 +218,7 @@ function startHeroAutoplay() {
     }, 5000);
 }
 
-function openPlayerBySlug(slug) {
-    clearInterval(heroAutoplayTimer); 
-    window.location.href = `detail.html?slug=${slug}`;
-}
-
-// --- HỆ THỐNG ĐĂNG NHẬP / ĐĂNG KÝ MỚI TINH ---
+// --- FORM LOGIN / REGISTER ---
 function checkLoginStatus() {
     const userProfile = document.querySelector('.user-profile');
     if (!userProfile) return;
@@ -191,9 +230,9 @@ function checkLoginStatus() {
             <div class="avatar" style="background: #e50914;">D</div>
             <div class="user-info">
                 <span class="username">${loggedUser.username}</span>
-                <span class="usertype">${loggedUser.usertype || 'Thành viên VIP'}</span>
+                <span class="usertype">Thành viên VIP</span>
             </div>
-            <span class="logout-icon" title="Đăng xuất" onclick="handleLogout(event)" style="margin-left:8px; font-size:14px;">🚪</span>
+            <span class="logout-icon" title="Đăng xuất" onclick="handleLogout(event)" style="margin-left:8px; font-size:14px; cursor:pointer;">🚪</span>
         `;
         userProfile.onclick = null;
     } else {
@@ -215,22 +254,19 @@ function createAuthModalHTML() {
     modal.style = "display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;";
     
     modal.innerHTML = `
-        <div style="background:#161618; padding:30px; border-radius:8px; width:100%; max-width:380px; border:1px solid #333; position:relative; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+        <div style="background:#161618; padding:30px; border-radius:8px; width:100%; max-width:380px; border:1px solid #333; position:relative;">
             <span onclick="closeAuthModal()" style="position:absolute; top:15px; right:15px; color:#aaa; cursor:pointer; font-size:18px;">✕</span>
             <h3 id="authTitle" style="margin-top:0; color:#fff; font-size:22px; text-align:center; margin-bottom:20px;">Đăng Nhập Rạp Phim</h3>
-            
             <div style="margin-bottom:15px;">
                 <label style="display:block; color:#aaa; font-size:12px; margin-bottom:5px;">TÊN TÀI KHOẢN</label>
-                <input type="text" id="authUser" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:4px; outline:none;">
+                <input type="text" id="authUser" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:4px;">
             </div>
             <div style="margin-bottom:20px;">
                 <label style="display:block; color:#aaa; font-size:12px; margin-bottom:5px;">MẬT KHẨU</label>
-                <input type="password" id="authPass" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:4px; outline:none;">
+                <input type="password" id="authPass" style="width:100%; padding:10px; background:#222; border:1px solid #444; color:#fff; border-radius:4px;">
             </div>
-            
-            <button id="authSubmitBtn" onclick="submitAuthForm()" style="width:100%; padding:12px; background:#e50914; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:15px;">ĐĂNG NHẬP</button>
-            
-            <p id="authSwitchText" style="color:#aaa; text-align:center; font-size:13px; margin-top:20px; margin-bottom:0;">
+            <button id="authSubmitBtn" onclick="submitAuthForm()" style="width:100%; padding:12px; background:#e50914; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">ĐĂNG NHẬP</button>
+            <p id="authSwitchText" style="color:#aaa; text-align:center; font-size:13px; margin-top:20px;">
                 Chưa có tài khoản? <span onclick="openAuthModal('register')" style="color:#ffcc00; cursor:pointer; text-decoration:underline;">Đăng ký ngay</span>
             </p>
         </div>
@@ -245,7 +281,6 @@ function openAuthModal(mode) {
     const title = document.getElementById('authTitle');
     const btn = document.getElementById('authSubmitBtn');
     const switchTxt = document.getElementById('authSwitchText');
-    
     if (!modal) return;
     modal.style.display = 'flex';
     
@@ -260,22 +295,14 @@ function openAuthModal(mode) {
     }
 }
 
-function closeAuthModal() {
-    const modal = document.getElementById('authModal');
-    if (modal) modal.style.display = 'none';
-}
+function closeAuthModal() { document.getElementById('authModal').style.display = 'none'; }
 
 function submitAuthForm() {
     const username = document.getElementById('authUser').value.trim();
     const password = document.getElementById('authPass').value.trim();
-    
-    if (!username || !password) {
-        alert("Vui lòng nhập đầy đủ thông tin tài khoản và mật khẩu!");
-        return;
-    }
+    if (!username || !password) { alert("Vui lòng nhập đầy đủ!"); return; }
 
     if (authMode === 'login') {
-        // Gửi lệnh Đăng nhập lên API Render
         fetch('https://cinematic-3gsh.onrender.com/api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -285,41 +312,28 @@ function submitAuthForm() {
         .then(data => {
             if (data.success) {
                 localStorage.setItem('loggedUser', JSON.stringify(data));
-                alert("🎉 Đăng nhập rạp phim VIP thành công!");
+                alert("🎉 Đăng nhập thành công!");
                 closeAuthModal();
                 checkLoginStatus();
-            } else {
-                alert(data.message);
-            }
+            } else { alert(data.message); }
         });
     } else {
-        // Xử lý Đăng ký (Lưu tài khoản ngầm vào LocalStorage của hệ thống Cloud)
         let localUsers = JSON.parse(localStorage.getItem('localUsersList')) || [];
         if (localUsers.some(u => u.username === username) || username === "TruongDuyVIP") {
-            alert("Tên tài khoản này đã có người đăng ký rồi Duy ơi!");
+            alert("Tài khoản đã tồn tại!");
             return;
         }
         localUsers.push({ username, password });
         localStorage.setItem('localUsersList', JSON.stringify(localUsers));
-        alert("🎉 Đăng ký tài khoản mới thành công! Giờ bạn có thể đăng nhập.");
+        alert("🎉 Đăng ký thành công! Hãy đăng nhập.");
         openAuthModal('login');
     }
 }
 
 function handleLogout(event) {
     event.stopPropagation();
-    if (confirm("Duy có chắc muốn đăng xuất tài khoản không?")) {
+    if (confirm("Duy có chắc muốn đăng xuất không?")) {
         localStorage.removeItem('loggedUser');
-        alert("👋 Đã đăng xuất tài khoản thành công!");
         window.location.reload();
     }
-}
-
-// --- QUẢN LÝ DANH SÁCH YÊU THÍCH ---
-function getFavorites() { return JSON.parse(localStorage.getItem('myMovieFavs')) || []; }
-function isFavorited(slug) { return getFavorites().some(m => m.slug === slug); }
-function toggleFavorite(movie) {
-    let favs = getFavorites();
-    if (isFavorited(movie.slug)) { favs = favs.filter(m => m.slug !== movie.slug); } else { favs.push(movie); }
-    localStorage.setItem('myMovieFavs', JSON.stringify(favs));
 }

@@ -3,128 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cinematic - Xem Phim Trực Tuyến Miễn Phí</title>
+    <title>Cinematic - Rạp Phim Trực Tuyến VIP</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS bổ sung cho phần logo, header và form auth mượt mà */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 4%;
+            background: #060606;
+            border-bottom: 1px solid #1f1f1f;
+        }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: #141414;
+            transition: 0.3s;
+        }
+        .user-profile:hover {
+            background: #222;
+        }
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #fff;
+        }
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .username {
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .usertype {
+            font-size: 11px;
+            color: #888;
+        }
+        /* Style cho Form Popup Đăng ký / Đăng nhập */
+        .auth-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .auth-container {
+            background: #161618;
+            padding: 30px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 360px;
+            border: 1px solid #333;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-family: sans-serif;
+        }
+        .auth-close {
+            position: absolute;
+            top: 15px; right: 15px;
+            color: #aaa; cursor: pointer; font-size: 18px;
+        }
+        .auth-container h3 {
+            margin-top: 0; color: #fff; font-size: 22px;
+            text-align: center; margin-bottom: 20px;
+        }
+        .auth-group {
+            margin-bottom: 15px;
+        }
+        .auth-group label {
+            display: block; color: #aaa; font-size: 11px; margin-bottom: 5px; letter-spacing: 0.5px;
+        }
+        .auth-group input {
+            width: 100%; padding: 11px; background: #222;
+            border: 1px solid #444; color: #fff; border-radius: 4px;
+            box-sizing: border-box; outline: none;
+        }
+        .auth-group input:focus { border-color: #e50914; }
+        .auth-btn {
+            width: 100%; padding: 12px; background: #e50914;
+            color: #fff; border: none; border-radius: 4px;
+            font-weight: bold; cursor: pointer; font-size: 14px;
+            margin-top: 10px; transition: 0.2s;
+        }
+        .auth-btn:hover { background: #b80710; }
+        .auth-switch {
+            color: #aaa; text-align: center; font-size: 13px; margin-top: 20px; margin-bottom: 0;
+        }
+        .auth-switch span {
+            color: #ffcc00; cursor: pointer; text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
 
-    <header>
-        <div class="header-left">
-            <a href="index.html" class="logo-wrapper">
-    <div class="logo-icon-circle">
-        <span class="play-triangle">▶</span>
-    </div>
-    <span class="logo-text-brand">Cinematic</span>
-</a>
-            <nav>
-                <div class="nav-btn active" onclick="switchCategory('all', this)">Trang chủ</div>
-                <div class="nav-btn" onclick="toggleFilterBar()">Thể loại</div>
-                <div class="nav-btn" onclick="switchCategory('phimTrungQuoc', this)">Phim Trung Quốc</div>
-                <div class="nav-btn" onclick="switchCategory('phimHanQuoc', this)">Phim Hàn Quốc</div>
-                <div class="nav-btn" onclick="switchCategory('favorites', this)">Tủ phim ❤</div>
-            </nav>
+    <header class="header">
+        <div class="logo" onclick="window.location.href='index.html'" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <span style="background: #e50914; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-family: sans-serif; font-size: 18px; box-shadow: 0 0 8px #e50914;">▶</span>
+            <span style="color: #fff; font-weight: 900; font-family: 'Arial Black', sans-serif; font-size: 24px; letter-spacing: 1px; text-transform: uppercase;">Cinematic</span>
         </div>
 
-        <div class="header-right">
+        <nav class="nav-links">
+            <a href="index.html" class="active">Trang Chủ</a>
+            <a href="#">Phim Bộ</a>
+            <a href="#">Phim Lẻ</a>
+            <a href="#">Hoạt Hình</a>
+            <a href="#">Quốc Gia</a>
+        </nav>
+
+        <div class="search-profile-container">
             <div class="search-box">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="searchInput" placeholder="Tìm kiếm phim, anime, diễn viên..." oninput="handleSearch()">
+                <input type="text" id="searchInput" placeholder="Tìm tên phim...">
+                <button onclick="handleSearch()">🔍</button>
             </div>
+
             <div class="user-profile">
-                <div class="avatar">D</div>
+                <div class="avatar" style="background: #444;">?</div>
                 <div class="user-info">
-                    <span class="username">Truong Duy</span>
-                    <span class="usertype">Thành viên VIP</span>
+                    <span class="username" style="color: #ffcc00;">Đăng nhập</span>
+                    <span class="usertype">Khách qua đường</span>
                 </div>
-                <span class="logout-icon">🚪</span>
             </div>
         </div>
     </header>
 
-    <div class="filter-bar" id="filterBar">
-        <span class="filter-title">DANH MỤC:</span>
-        <div class="filter-options">
-            <button class="btn-filter" onclick="quickScroll('newMoviesSection')">Mới Cập Nhật</button>
-            <button class="btn-filter" onclick="quickScroll('phimBoSection')">Phim Bộ HOT</button>
-            <button class="btn-filter" onclick="quickScroll('phimLeSection')">Phim Lẻ</button>
-            <button class="btn-filter" onclick="quickScroll('animeSection')">Hoạt Hình Anime</button>
+    <section class="hero-banner" id="heroBanner">
+        <div class="hero-content">
+            <h1>Đang tải phim hot...</h1>
+            <p>Vui lòng đợi trong giây lát rạp phim đang kết nối hệ thống...</p>
         </div>
-    </div>
+    </section>
 
-    <div class="hero-banner" id="heroBanner">
-        <button class="hero-arrow hero-arrow-left" onclick="changeHeroSlide(-1)">❮</button>
-        <div class="hero-content"></div>
-        <button class="hero-arrow hero-arrow-right" onclick="changeHeroSlide(1)">❯</button>
-    </div>
+    <section class="movie-section" id="search-result-section" style="display: none; background: #0b0b0c; padding: 20px 4%;">
+        <h2 class="section-title" style="color: #ffcc00;">🔍 Kết Quả Tìm Kiếm</h2>
+        <div class="movie-grid" id="searchMoviesGrid"></div>
+    </section>
 
-    <div class="container" id="mainMovieContent">
+    <main class="main-content" style="padding: 20px 4%;">
         
-        <div id="newMoviesSection">
-            <h2>🔥 PHIM MỚI CẬP NHẬT (2026) <span class="view-all" onclick="filterMoviesByUrl('danh-sach/phim-moi-cap-nhat', 'Phim Mới Cập Nhật')">Xem tất cả</span></h2>
-            <div class="movie-row-wrapper">
-                <button class="nav-arrow arrow-left" onclick="scrollRow('newMoviesGrid', -1)">❮</button>
-                <div class="movie-grid" id="newMoviesGrid"></div>
-                <button class="nav-arrow arrow-right" onclick="scrollRow('newMoviesGrid', 1)">❯</button>
-            </div>
-        </div>
+        <section class="movie-section">
+            <h2 class="section-title">🔥 Phim Mới Cập Nhật</h2>
+            <div class="movie-grid" id="newMoviesGrid"></div>
+        </section>
 
-        <div id="phimTrungQuocSection">
-            <h2>🇨🇳 KHO PHIM TRUNG QUỐC HOT <span class="view-all" onclick="filterMoviesByUrl('quoc-gia/trung-quoc', 'Phim Trung Quốc')">Xem tất cả</span></h2>
-            <div class="movie-row-wrapper">
-                <button class="nav-arrow arrow-left" onclick="scrollRow('phimTrungQuocGrid', -1)">❮</button>
-                <div class="movie-grid" id="phimTrungQuocGrid"></div>
-                <button class="nav-arrow arrow-right" onclick="scrollRow('phimTrungQuocGrid', 1)">❯</button>
-            </div>
-        </div>
+        <section class="movie-section">
+            <h2 class="section-title">🇨🇳 Siêu Phẩm Phim Trung Quốc</h2>
+            <div class="movie-grid" id="phimTrungQuocGrid"></div>
+        </section>
 
-        <div id="phimHanQuocSection">
-            <h2>🇰🇷 SIÊU PHẨM TRUYỀN HÌNH HÀN QUỐC <span class="view-all" onclick="filterMoviesByUrl('quoc-gia/han-quoc', 'Phim Hàn Quốc')">Xem tất cả</span></h2>
-            <div class="movie-row-wrapper">
-                <button class="nav-arrow arrow-left" onclick="scrollRow('phimHanQuocGrid', -1)">❮</button>
-                <div class="movie-grid" id="phimHanQuocGrid"></div>
-                <button class="nav-arrow arrow-right" onclick="scrollRow('phimHanQuocGrid', 1)">❯</button>
-            </div>
-        </div>
+        <section class="movie-section">
+            <h2 class="section-title">🇰🇷 Tâm Lý Tình Cảm Hàn Quốc</h2>
+            <div class="movie-grid" id="phimHanQuocGrid"></div>
+        </section>
 
-        <div id="horrorMoviesSection">
-            <h2>💀 SIÊU PHẨM KINH DỊ RÙNG RỢN <span class="view-all" onclick="filterMoviesByUrl('the-loai/kinh-di', 'Phim Kinh Dị')">Xem tất cả</span></h2>
-            <div class="movie-row-wrapper">
-                <button class="nav-arrow arrow-left" onclick="scrollRow('horrorMovieGrid', -1)">❮</button>
-                <div class="movie-grid" id="horrorMovieGrid"></div>
-                <button class="nav-arrow arrow-right" onclick="scrollRow('horrorMovieGrid', 1)">❯</button>
-            </div>
-        </div>
+        <section class="movie-section">
+            <h2 class="section-title">☠️ Phim Kinh Dị Rùng Rợn</h2>
+            <div class="movie-grid" id="horrorMovieGrid"></div>
+        </section>
 
-        <div id="phimBoSection">
-            <h2>📺 PHIM BỘ DÀI TẬP ĐANG HOT <span class="view-all" onclick="filterMoviesByUrl('danh-sach/phim-bo', 'Phim Bộ Thông Thường')">Xem tất cả</span></h2>
-            <div class="movie-row-wrapper">
-                <button class="nav-arrow arrow-left" onclick="scrollRow('phimBoGrid', -1)">❮</button>
-                <div class="movie-grid" id="phimBoGrid"></div>
-                <button class="nav-arrow arrow-right" onclick="scrollRow('phimBoGrid', 1)">❯</button>
-            </div>
-        </div>
+        <section class="movie-section">
+            <h2 class="section-title">🎬 Top Phim Bộ Hay Nhất</h2>
+            <div class="movie-grid" id="phimBoGrid"></div>
+        </section>
 
-        <div id="phimLeSection">
-            <h2>🎬 PHIM LẺ BOM TẤN CHIẾU RẠP <span class="view-all" onclick="filterMoviesByUrl('danh-sach/phim-le', 'Phim Lẻ Bản Quyền')">Xem tất cả</span></h2>
-            <div class="movie-row-wrapper">
-                <button class="nav-arrow arrow-left" onclick="scrollRow('phimLeGrid', -1)">❮</button>
-                <div class="movie-grid" id="phimLeGrid"></div>
-                <button class="nav-arrow arrow-right" onclick="scrollRow('phimLeGrid', 1)">❯</button>
-            </div>
-        </div>
+        <section class="movie-section">
+            <h2 class="section-title">🎥 Kho Phim Lẻ Chọn Lọc</h2>
+            <div class="movie-grid" id="phimLeGrid"></div>
+        </section>
 
-        <div id="animeSection">
-            <h2>🦄 THẾ GIỚI HOẠT HÌNH ANIME <span class="view-all" onclick="filterMoviesByUrl('danh-sach/hoat-hinh', 'Phim Hoạt Hình Anime')">Xem tất cả</span></h2>
-            <div class="movie-row-wrapper">
-                <button class="nav-arrow arrow-left" onclick="scrollRow('animeGrid', -1)">❮</button>
-                <div class="movie-grid" id="animeGrid"></div>
-                <button class="nav-arrow arrow-right" onclick="scrollRow('animeGrid', 1)">❯</button>
-            </div>
-        </div>
+        <section class="movie-section">
+            <h2 class="section-title">⛩️ Thế Giới Anime & Hoạt Hình</h2>
+            <div class="movie-grid" id="animeGrid"></div>
+        </section>
 
+    </main>
+
+    <div class="auth-modal" id="authModal">
+        <div class="auth-container">
+            <span class="auth-close" onclick="closeAuthModal()">✕</span>
+            <h3 id="authTitle">Đăng Nhập Rạp Phim</h3>
+            
+            <div class="auth-group">
+                <label>TÊN TÀI KHOẢN</label>
+                <input type="text" id="authUser" placeholder="Nhập tài khoản...">
+            </div>
+            <div class="auth-group">
+                <label>MẬT KHẨU</label>
+                <input type="password" id="authPass" placeholder="Nhập mật khẩu...">
+            </div>
+            
+            <button class="auth-btn" id="authSubmitBtn" onclick="submitAuthForm()">ĐĂNG NHẬP</button>
+            
+            <p class="auth-switch" id="authSwitchText">
+                Chưa có tài khoản? <span onclick="openAuthModal('register')">Đăng ký ngay</span>
+            </p>
+        </div>
     </div>
 
-    <div id="paginationContainer" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin: 30px 0; padding-bottom: 20px;"></div>
+    <footer style="text-align: center; padding: 30px; color: #444; border-top: 1px solid #111; font-size: 13px;">
+        &copy; 2026 Cinematic VIP - Phát triển bởi TruongDuy Dev.
+    </footer>
 
     <script src="script.js"></script>
 </body>
