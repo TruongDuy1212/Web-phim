@@ -2,10 +2,8 @@ let hotMoviesList = [];
 let currentHeroIndex = 0;     
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // 1. Kiểm tra trạng thái đăng nhập
     checkLoginStatus();
 
-    // 2. Phân loại trang
     const urlParams = new URLSearchParams(window.location.search);
     const movieSlug = urlParams.get('slug');
 
@@ -13,7 +11,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         const logo = document.querySelector('.logo, .logo-group span');
         if (logo) { logo.style.color = '#ffffff'; logo.style.textDecoration = 'none'; }
     } else {
-        // Tải dữ liệu trang chủ
         await loadMoviesFromServer();
 
         const searchInput = document.getElementById('searchInput');
@@ -25,13 +22,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-// --- TẢI PHIM TỪ SERVER RENDER THẬT ---
 async function loadMoviesFromServer() {
     try {
         const response = await fetch('https://cinematic-3gsh.onrender.com/api/movies');
         const data = await response.json();
 
-        // Lấy 5 phim mới nhất để chạy luân phiên trên khối Banner lớn
         if (data.newMovies && data.newMovies.length > 0) {
             hotMoviesList = data.newMovies.slice(0, 5);
             updateHeroBanner(0);
@@ -44,12 +39,25 @@ async function loadMoviesFromServer() {
         renderMovieSection('phimLeGrid', data.phimLe);
         renderMovieSection('animeGrid', data.anime);
 
+        // Fix lỗi kéo phim Kinh Dị hiển thị ra giao diện
+        try {
+            const horrorRes = await fetch('https://ophim1.com/v1/api/the-loai/kinh-di?page=1');
+            const horrorData = await horrorRes.json();
+            const horrorMovies = (horrorData.data?.items || []).slice(0, 10).map(item => {
+                let img = item.thumb_url;
+                if (!img.startsWith('http')) img = `https://img.ophim.live/uploads/movies/${img}`;
+                return { title: item.name, slug: item.slug, image_url: img };
+            });
+            renderMovieSection('horrorMovieGrid', horrorMovies);
+        } catch (e) { console.log("Lỗi tải mục kinh dị:", e); }
+
     } catch (error) { console.error(error); }
 }
 
-// --- HÀM CẬP NHẬT BANNER ẢNH NỀN CHẠY PHIM MỚI ---
+// KHỐI FIX LỖI MẤT POSTER BÊN PHẢI BANNER
 async function updateHeroBanner(index) {
     const bannerBg = document.getElementById('heroBannerBg');
+    const rightPoster = document.getElementById('heroRightPoster');
     const heroTitle = document.getElementById('heroTitle');
     const heroDesc = document.getElementById('heroDesc');
     const heroPlayBtn = document.getElementById('heroPlayBtn');
@@ -57,11 +65,10 @@ async function updateHeroBanner(index) {
     if (hotMoviesList.length > 0 && bannerBg) {
         const movie = hotMoviesList[index];
         
-        // Đổ ảnh phim trực tiếp làm hình nền thông qua thuộc tính độc lập
         bannerBg.style.backgroundImage = `url(${movie.image_url})`;
+        if (rightPoster) rightPoster.src = movie.image_url; // Gán poster góc phải đồng bộ
         if (heroTitle) heroTitle.innerText = movie.title;
         
-        // Lấy nội dung mô tả chi tiết từ API
         try {
             const rawRes = await fetch(`https://ophim1.com/phim/${movie.slug}`);
             const rawData = await rawRes.json();
@@ -69,14 +76,13 @@ async function updateHeroBanner(index) {
                 heroDesc.innerText = rawData.movie.content.replace(/<[^>]*>/g, '').slice(0, 160) + '...';
             }
         } catch (e) {
-            if (heroDesc) heroDesc.innerText = `Cùng thưởng thức bộ phim mới nhất ${movie.title} chất lượng hình ảnh sắc nét Full HD vietsub cực hay tại Cine NC.`;
+            if (heroDesc) heroDesc.innerText = `Cùng thưởng thức bộ phim mới nhất ${movie.title} chất lượng hình ảnh sắc nét Full HD vietsub cực hay tại Cinematic.`;
         }
 
         if (heroPlayBtn) heroPlayBtn.onclick = () => window.location.href = `detail.html?slug=${movie.slug}`;
     }
 }
 
-// Hàm đổi Slide Banner khi click mũi tên Trái / Phải
 function changeHeroSlide(direction) {
     currentHeroIndex += direction;
     if (currentHeroIndex >= hotMoviesList.length) currentHeroIndex = 0;
@@ -102,7 +108,6 @@ function renderMovieSection(elementId, movies) {
     });
 }
 
-// --- TÌM KIẾM PHIM ---
 async function handleSearch() {
     const input = document.getElementById('searchInput').value.trim();
     const searchSection = document.getElementById('searchResultSection');
@@ -139,11 +144,6 @@ async function handleSearch() {
     } catch (error) { console.error(error); }
 }
 
-// =========================================================================
-// 🚪 HỆ THỐNG ĐĂNG NHẬP / ĐĂNG KÝ / ĐĂNG XUẤT QUA POPUP XỊN SÒ
-// =========================================================================
-let authMode = 'login';
-
 function checkLoginStatus() {
     const userProfile = document.getElementById('profileBtn');
     if (!userProfile) return;
@@ -154,26 +154,21 @@ function checkLoginStatus() {
     const usertypeNode = userProfile.querySelector('.usertype');
 
     if (loggedUser && loggedUser.token) {
-        // Trạng thái đã đăng nhập tài khoản VIP thành công
         if (avatarNode) avatarNode.innerText = 'D';
         if (usernameNode) usernameNode.innerText = loggedUser.username;
         if (usertypeNode) usertypeNode.innerText = 'Đăng xuất 🚪';
         
-        // Click vào lúc này sẽ hỏi xem có muốn Đăng xuất không
         userProfile.onclick = () => {
-            if (confirm("Duy có chắc chắn muốn đăng xuất tài khoản VIP không?")) {
+            if (confirm("Duy có chắc chắn muốn đăng xuất không?")) {
                 localStorage.removeItem('loggedUser');
                 alert("👋 Đã đăng xuất thành công!");
                 window.location.reload();
             }
         };
     } else {
-        // Trạng thái khách chưa đăng nhập
         if (avatarNode) avatarNode.innerText = '?';
         if (usernameNode) usernameNode.innerText = 'Đăng nhập';
         if (usertypeNode) usertypeNode.innerText = 'Cá nhân';
-        
-        // Click mở form Popup
         userProfile.onclick = () => openAuthModal('login');
     }
 }
@@ -231,7 +226,7 @@ function submitAuthForm() {
         }
         localUsers.push({ username, password });
         localStorage.setItem('registeredUsersList', JSON.stringify(localUsers));
-        alert("🎉 Đăng ký thành công! Hãy tiến hành đăng nhập nhé Duy.");
+        alert("🎉 Đăng ký thành công! Hãy tiến hành đăng nhập.");
         openAuthModal('login');
     }
 }
