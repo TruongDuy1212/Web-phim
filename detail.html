@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi Tiết Phim - Cinematic</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS bổ sung riêng cho trang chi tiết gọn gàng */
+        .detail-layout { display: flex; gap: 40px; margin-top: 30px; }
+        .detail-left { flex: 0 0 280px; text-align: center; }
+        .detail-left img { width: 100%; height: 390px; object-fit: cover; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .detail-right { flex: 1; }
+        .movie-info-list { margin-top: 20px; list-style: none; padding: 0; font-size: 13px; color: #aaa; line-height: 2; }
+        .movie-info-list span { color: #fff; font-weight: bold; }
+        .info-block { background: #161618; padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #222; }
+        .info-block h3 { margin-top: 0; color: #e50914; font-size: 16px; border-left: 4px solid #e50914; padding-left: 10px; display: flex; align-items: center; gap: 8px; }
+        .btn-action-large { width: 100%; padding: 12px; border-radius: 20px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 14px; border: none; }
+        .btn-play-now { background: #e50914; color: white; }
+        .btn-play-now:hover { background: #b20710; }
+        .btn-fav-add { background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            <a href="index.html" class="logo">Cinematic</a>
+        </div>
+        <div class="header-right">
+            <nav>
+                <a href="index.html" class="nav-btn active">🧭 Khám phá</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="playerWrapper" style="display: none; width: 100%; max-width: 1000px; margin: 20px auto; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid #e50914;">
+            <iframe id="detailVideoPlayer" src="" style="width: 100%; height: 500px; border: none;" allowfullscreen></iframe>
+        </div>
+
+        <div class="detail-layout">
+            <div class="detail-left">
+                <img id="detailPoster" src="" alt="Poster Phim">
+                <h2 id="detailTitle" style="font-size: 22px; margin: 15px 0 5px 0; text-align: left;">Loading...</h2>
+                
+                <button class="btn-action-large btn-play-now" onclick="startPlayFirstEpisode()">▶ XEM PHIM NGAY</button>
+                <button class="btn-action-large btn-fav-add">+ Thêm vào Yêu Thích</button>
+
+                <ul class="movie-info-list">
+                    <li>Số tập: <span id="infoTotalEps">Đang tải...</span></li>
+                    <li>Trạng thái hiện tại: <span id="infoCurrentState" style="color: #ff333f;">Đang tải...</span></li>
+                    <li>Ngôn ngữ: <span>Vietsub</span></li>
+                    <li>Cập nhật: <span id="infoUpdateDate">20/06/2026</span></li>
+                </ul>
+            </div>
+
+            <div class="detail-right">
+                <div class="info-block">
+                    <h3>ⓘ Giới Thiệu Nội Dung</h3>
+                    <p id="detailDesc" style="color: #aaa; font-size: 14px; line-height: 1.6;">Đang tải nội dung tóm tắt từ máy chủ server...</p>
+                </div>
+
+                <div class="info-block">
+                    <h3>📺 Chọn Tập Để Xem Ngay</h3>
+                    <div class="episode-list" id="detailEpisodeGrid" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let firstEpisodeLink = '';
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Lấy từ khóa Slug truyền sang từ URL thông qua index.html
+            const urlParams = new URLSearchParams(window.location.search);
+            const slug = urlParams.get('slug');
+            if (!slug) { window.location.href = 'index.html'; return; }
+
+            try {
+                // 1. Gọi sang backend lấy chi tiết phim
+                const res = await fetch(`http://localhost:5000/api/movie-detail?slug=${slug}`);
+                const data = await res.json();
+
+                // 2. Tái tạo thông tin phim từ bộ nhớ tạm localStorage (Tên phim, ảnh nền)
+                const activeMovieInfo = JSON.parse(localStorage.getItem('activeMovieInfo')) || {};
+                
+                document.getElementById('detailTitle').textContent = activeMovieInfo.title || "Tên Phim";
+                document.getElementById('detailPoster').src = activeMovieInfo.image_url || "";
+                document.getElementById('detailDesc').textContent = data.description || "Không có mô tả.";
+                
+                // Điền thông số phụ
+                document.getElementById('infoTotalEps').textContent = data.episodes?.length ? `${data.episodes.length} tập` : "1 tập";
+                document.getElementById('infoCurrentState').textContent = activeMovieInfo.label || "FULL";
+
+                // 3. Đổ danh sách tập phim ra ô lưới dạng vuông xịn sò
+                const epGrid = document.getElementById('detailEpisodeGrid');
+                epGrid.innerHTML = '';
+
+                if (!data.episodes || data.episodes.length === 0) {
+                    epGrid.innerHTML = '<p style="color: #666;">Phim đang chờ cập nhật hệ thống tập...</p>';
+                    return;
+                }
+
+                // Ghi nhớ tập đầu tiên cho nút to bấm phát nhanh
+                firstEpisodeLink = data.episodes[0].link;
+
+                data.episodes.forEach((ep, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-episode';
+                    btn.style.cssText = 'padding: 10px 20px; background: #222225; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; min-width: 75px;';
+                    btn.textContent = `Tập ${ep.name}`;
+                    
+                    btn.onclick = () => {
+                        // Bật khung phát video lên và mở tập tương ứng
+                        document.getElementById('playerWrapper').style.display = 'block';
+                        document.getElementById('detailVideoPlayer').src = ep.link;
+                        
+                        // Đổi màu làm nổi bật tập đang xem
+                        document.querySelectorAll('.btn-episode').forEach(b => b.style.background = '#222225');
+                        btn.style.background = '#e50914';
+                        
+                        // Cuộn màn hình lên trên cùng chỗ phát phim cho mượt
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    };
+                    epGrid.appendChild(btn);
+                });
+
+            } catch (err) {
+                console.error("Lỗi lấy chi tiết phim:", err);
+            }
+        });
+
+        function startPlayFirstEpisode() {
+            if (firstEpisodeLink) {
+                document.getElementById('playerWrapper').style.display = 'block';
+                document.getElementById('detailVideoPlayer').src = firstEpisodeLink;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                const firstBtn = document.getElementById('detailEpisodeGrid').querySelector('button');
+                if (firstBtn) firstBtn.style.background = '#e50914';
+            } else {
+                alert("Phim đang chờ cập nhật liên kết!");
+            }
+        }
+    </script>
+</body>
+</html>

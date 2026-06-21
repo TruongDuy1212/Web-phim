@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ Thống Quản Trị - Thêm Phim Mới</title>
+    <style>
+        body { background: #141414; color: #fff; font-family: Arial; padding: 50px; }
+        .form-box { max-width: 500px; margin: 0 auto; background: #000; padding: 30px; border: 2px solid #ffcc00; border-radius: 8px; }
+        h2 { color: #ffcc00; text-align: center; }
+        input { width: 100%; padding: 10px; margin: 10px 0 20px 0; background: #222; color: #fff; border: 1px solid #444; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #ffcc00; border: none; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="form-box">
+        <h2>THÊM PHIM VÀO SERVER</h2>
+        <label>Tên phim:</label>
+        <input type="text" id="title" placeholder="Ví dụ: Lật Mặt 7">
+        
+        <label>Nhãn trạng thái:</label>
+        <input type="text" id="label" placeholder="Ví dụ: Bản Đẹp - Vietsub">
+        
+        <label>Link ảnh Poster:</label>
+        <input type="text" id="image_url" placeholder="Nhập link ảnh https://...">
+        
+        <label>Link nhúng video (YouTube Embed):</label>
+        <input type="text" id="video_url" placeholder="Ví dụ: https://www.youtube.com/embed/...">
+        
+        <button onclick="addMovie()">KÍCH HOẠT ĐẨY LÊN SERVER</button>
+    </div>
+
+    <script>
+        async function addMovie() {
+            const movieData = {
+                title: document.getElementById('title').value,
+                label: document.getElementById('label').value,
+                image_url: document.getElementById('image_url').value,
+                video_url: document.getElementById('video_url').value
+            };
+
+            const response = await fetch('http://localhost:5000/api/movies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(movieData)
+            });
+
+            if(response.ok) {
+                alert('Đã đồng bộ database máy chủ thành công!');
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>

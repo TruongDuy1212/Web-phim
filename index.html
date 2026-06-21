@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic - Xem Phim Trực Tuyến Miễn Phí</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            <a href="index.html" class="logo-wrapper">
+    <div class="logo-icon-circle">
+        <span class="play-triangle">▶</span>
+    </div>
+    <span class="logo-text-brand">Cinematic</span>
+</a>
+            <nav>
+                <div class="nav-btn active" onclick="switchCategory('all', this)">Trang chủ</div>
+                <div class="nav-btn" onclick="toggleFilterBar()">Thể loại</div>
+                <div class="nav-btn" onclick="switchCategory('phimTrungQuoc', this)">Phim Trung Quốc</div>
+                <div class="nav-btn" onclick="switchCategory('phimHanQuoc', this)">Phim Hàn Quốc</div>
+                <div class="nav-btn" onclick="switchCategory('favorites', this)">Tủ phim ❤</div>
+            </nav>
+        </div>
+
+        <div class="header-right">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Tìm kiếm phim, anime, diễn viên..." oninput="handleSearch()">
+            </div>
+            <div class="user-profile">
+                <div class="avatar">D</div>
+                <div class="user-info">
+                    <span class="username">Truong Duy</span>
+                    <span class="usertype">Thành viên VIP</span>
+                </div>
+                <span class="logout-icon">🚪</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="filter-bar" id="filterBar">
+        <span class="filter-title">DANH MỤC:</span>
+        <div class="filter-options">
+            <button class="btn-filter" onclick="quickScroll('newMoviesSection')">Mới Cập Nhật</button>
+            <button class="btn-filter" onclick="quickScroll('phimBoSection')">Phim Bộ HOT</button>
+            <button class="btn-filter" onclick="quickScroll('phimLeSection')">Phim Lẻ</button>
+            <button class="btn-filter" onclick="quickScroll('animeSection')">Hoạt Hình Anime</button>
+        </div>
+    </div>
+
+    <div class="hero-banner" id="heroBanner">
+        <button class="hero-arrow hero-arrow-left" onclick="changeHeroSlide(-1)">❮</button>
+        <div class="hero-content"></div>
+        <button class="hero-arrow hero-arrow-right" onclick="changeHeroSlide(1)">❯</button>
+    </div>
+
+    <div class="container" id="mainMovieContent">
+        
+        <div id="newMoviesSection">
+            <h2>🔥 PHIM MỚI CẬP NHẬT (2026) <span class="view-all" onclick="filterMoviesByUrl('danh-sach/phim-moi-cap-nhat', 'Phim Mới Cập Nhật')">Xem tất cả</span></h2>
+            <div class="movie-row-wrapper">
+                <button class="nav-arrow arrow-left" onclick="scrollRow('newMoviesGrid', -1)">❮</button>
+                <div class="movie-grid" id="newMoviesGrid"></div>
+                <button class="nav-arrow arrow-right" onclick="scrollRow('newMoviesGrid', 1)">❯</button>
+            </div>
+        </div>
+
+        <div id="phimTrungQuocSection">
+            <h2>🇨🇳 KHO PHIM TRUNG QUỐC HOT <span class="view-all" onclick="filterMoviesByUrl('quoc-gia/trung-quoc', 'Phim Trung Quốc')">Xem tất cả</span></h2>
+            <div class="movie-row-wrapper">
+                <button class="nav-arrow arrow-left" onclick="scrollRow('phimTrungQuocGrid', -1)">❮</button>
+                <div class="movie-grid" id="phimTrungQuocGrid"></div>
+                <button class="nav-arrow arrow-right" onclick="scrollRow('phimTrungQuocGrid', 1)">❯</button>
+            </div>
+        </div>
+
+        <div id="phimHanQuocSection">
+            <h2>🇰🇷 SIÊU PHẨM TRUYỀN HÌNH HÀN QUỐC <span class="view-all" onclick="filterMoviesByUrl('quoc-gia/han-quoc', 'Phim Hàn Quốc')">Xem tất cả</span></h2>
+            <div class="movie-row-wrapper">
+                <button class="nav-arrow arrow-left" onclick="scrollRow('phimHanQuocGrid', -1)">❮</button>
+                <div class="movie-grid" id="phimHanQuocGrid"></div>
+                <button class="nav-arrow arrow-right" onclick="scrollRow('phimHanQuocGrid', 1)">❯</button>
+            </div>
+        </div>
+
+        <div id="horrorMoviesSection">
+            <h2>💀 SIÊU PHẨM KINH DỊ RÙNG RỢN <span class="view-all" onclick="filterMoviesByUrl('the-loai/kinh-di', 'Phim Kinh Dị')">Xem tất cả</span></h2>
+            <div class="movie-row-wrapper">
+                <button class="nav-arrow arrow-left" onclick="scrollRow('horrorMovieGrid', -1)">❮</button>
+                <div class="movie-grid" id="horrorMovieGrid"></div>
+                <button class="nav-arrow arrow-right" onclick="scrollRow('horrorMovieGrid', 1)">❯</button>
+            </div>
+        </div>
+
+        <div id="phimBoSection">
+            <h2>📺 PHIM BỘ DÀI TẬP ĐANG HOT <span class="view-all" onclick="filterMoviesByUrl('danh-sach/phim-bo', 'Phim Bộ Thông Thường')">Xem tất cả</span></h2>
+            <div class="movie-row-wrapper">
+                <button class="nav-arrow arrow-left" onclick="scrollRow('phimBoGrid', -1)">❮</button>
+                <div class="movie-grid" id="phimBoGrid"></div>
+                <button class="nav-arrow arrow-right" onclick="scrollRow('phimBoGrid', 1)">❯</button>
+            </div>
+        </div>
+
+        <div id="phimLeSection">
+            <h2>🎬 PHIM LẺ BOM TẤN CHIẾU RẠP <span class="view-all" onclick="filterMoviesByUrl('danh-sach/phim-le', 'Phim Lẻ Bản Quyền')">Xem tất cả</span></h2>
+            <div class="movie-row-wrapper">
+                <button class="nav-arrow arrow-left" onclick="scrollRow('phimLeGrid', -1)">❮</button>
+                <div class="movie-grid" id="phimLeGrid"></div>
+                <button class="nav-arrow arrow-right" onclick="scrollRow('phimLeGrid', 1)">❯</button>
+            </div>
+        </div>
+
+        <div id="animeSection">
+            <h2>🦄 THẾ GIỚI HOẠT HÌNH ANIME <span class="view-all" onclick="filterMoviesByUrl('danh-sach/hoat-hinh', 'Phim Hoạt Hình Anime')">Xem tất cả</span></h2>
+            <div class="movie-row-wrapper">
+                <button class="nav-arrow arrow-left" onclick="scrollRow('animeGrid', -1)">❮</button>
+                <div class="movie-grid" id="animeGrid"></div>
+                <button class="nav-arrow arrow-right" onclick="scrollRow('animeGrid', 1)">❯</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="paginationContainer" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin: 30px 0; padding-bottom: 20px;"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
