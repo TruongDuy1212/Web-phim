@@ -1,5 +1,6 @@
 let hotMoviesList = [];       
 let currentHeroIndex = 0;     
+let currentPage = 1;          // Theo dõi trang hiện tại Duy đang xem
 
 document.addEventListener("DOMContentLoaded", async () => {
     checkLoginStatus();
@@ -7,13 +8,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const movieSlug = urlParams.get('slug');
     const categoryType = urlParams.get('type');
+    const pageParam = urlParams.get('page');
+    
+    if (pageParam) {
+        currentPage = parseInt(pageParam);
+    } else {
+        currentPage = 1;
+    }
 
     if (movieSlug) {
         const logo = document.querySelector('.logo, .logo-group span');
         if (logo) { logo.style.color = '#ffffff'; logo.style.textDecoration = 'none'; }
     } else if (categoryType) {
-        // Xử lý trang loạt phim danh mục
-        await loadCategoryPageData(categoryType);
+        // --- NẾU ĐANG Ở TRANG CATEGORY.HTML $\rightarrow$ TẢI PHIM PHÂN TRANG ---
+        await loadCategoryPageData(categoryType, currentPage);
     } else {
         await loadMoviesFromServer();
 
@@ -26,57 +34,131 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
-// --- TẢI TOÀN BỘ PHIM CHO TRANG CATEGORY.HTML ---
-async function loadCategoryPageData(type) {
+// =========================================================================
+// 🌐 KHỐI XỬ LÝ LẤY TẤT CẢ PHIM + PHÂN TRANG CHO CATEGORY.HTML
+// =========================================================================
+async function loadCategoryPageData(type, page) {
     const grid = document.getElementById('categoryMovieGrid');
     const titleHeader = document.getElementById('categoryPageTitle');
+    const paginationContainer = document.getElementById('paginationContainer');
+    
     if (!grid || !titleHeader) return;
 
-    let apiUrl = 'https://cinematic-3gsh.onrender.com/api/movies';
-    
+    // Bảng cấu hình tên hiển thị tiêu đề danh mục
     const titleMap = {
         'newMovies': '🔥 Toàn Bộ Phim Mới Cập Nhật',
-        'phimTrungQuoc': '🇨🇳 Toàn Bộ Phim Trung Quốc Quốc Dân',
+        'phimTrungQuoc': '🇨🇳 Toàn Bộ Phim Trung Quốc Chọn Lọc',
         'phimHanQuoc': '🇰🇷 Toàn Bộ Phim Hàn Quốc Lãng Mạn',
         'phimBo': '🎬 Toàn Bộ Danh Sách Phim Bộ Dài Tập',
         'phimLe': '🎥 Toàn Bộ Kho Phim Lẻ Chọn Lọc',
         'anime': '⛩️ Toàn Bộ Thế Giới Phim Hoạt Hình Anime',
         'horror': '☠️ Toàn Bộ Khối Phim Kinh Dị Rùng Rợn'
     };
-    titleHeader.innerText = titleMap[type] || "Danh Sách Phim";
+    titleHeader.innerText = `${titleMap[type] || "Danh Sách Phim"} - Trang ${page}`;
+
+    // Ánh xạ từ danh mục của Duy sang link API phân trang gốc của OPhim
+    let targetApiUrl = '';
+    if (type === 'newMovies') {
+        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-moi-cap-nhat?page=${page}`;
+    } else if (type === 'phimTrungQuoc') {
+        targetApiUrl = `https://ophim1.com/v1/api/quoc-gia/trung-quoc?page=${page}`;
+    } else if (type === 'phimHanQuoc') {
+        targetApiUrl = `https://ophim1.com/v1/api/quoc-gia/han-quoc?page=${page}`;
+    } else if (type === 'phimBo') {
+        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-bo?page=${page}`;
+    } else if (type === 'phimLe') {
+        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-le?page=${page}`;
+    } else if (type === 'anime') {
+        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/hoat-hinh?page=${page}`;
+    } else if (type === 'horror') {
+        targetApiUrl = `https://ophim1.com/v1/api/the-loai/kinh-di?page=${page}`;
+    }
 
     try {
-        let movies = [];
-        if (type === 'horror') {
-            const res = await fetch('https://ophim1.com/v1/api/the-loai/kinh-di?page=1');
-            const resData = await res.json();
-            movies = (resData.data?.items || []).map(item => {
-                let img = item.thumb_url;
-                if (!img.startsWith('http')) img = `https://img.ophim.live/uploads/movies/${img}`;
-                return { title: item.name, slug: item.slug, image_url: img };
-            });
-        } else {
-            const response = await fetch(apiUrl);
-            const data = await response.json();
-            movies = data[type] || [];
-        }
+        grid.innerHTML = '<p style="color:#aaa; padding: 20px 0;">Hệ thống đang bốc dữ liệu loạt phim, Duy đợi một chút nhé...</p>';
+        
+        const res = await fetch(targetApiUrl);
+        const resData = await res.json();
+        
+        const items = resData.data?.items || resData.items || [];
+        const paginationInfo = resData.data?.params?.pagination || {};
+        
+        // Tính toán tổng số trang dựa trên dữ liệu API trả về thật
+        const totalItems = paginationInfo.totalItemsCount || 100;
+        const totalPages = Math.ceil(totalItems / (paginationInfo.totalItemsPerPage || 10)) || 10;
 
         grid.innerHTML = '';
-        movies.forEach(movie => {
+        if (items.length === 0) {
+            grid.innerHTML = '<p style="color:#aaa;">Danh mục này hiện tại không có phim hiển thị.</p>';
+            if (paginationContainer) paginationContainer.innerHTML = '';
+            return;
+        }
+
+        // Định dạng ảnh và dựng loạt phim ra giao diện vuông vắn nhiều hàng
+        items.forEach(item => {
+            let img = item.thumb_url || '';
+            if (img && !img.startsWith('http')) {
+                img = `https://img.ophim.live/uploads/movies/${img}`;
+            }
+
             const card = document.createElement('div');
             card.className = 'movie-card';
-            card.onclick = () => window.location.href = `detail.html?slug=${movie.slug}`;
+            card.onclick = () => window.location.href = `detail.html?slug=${item.slug}`;
             card.innerHTML = `
-                <div class="movie-img-container"><img src="${movie.image_url}" alt="${movie.title}"></div>
-                <div class="movie-title">${movie.title}</div>
+                <div class="movie-img-container"><img src="${img}" alt="${item.name}"></div>
+                <div class="movie-title">${item.name}</div>
             `;
             grid.appendChild(card);
         });
 
-    } catch (e) { console.error(e); }
+        // DỰNG THANH ĐIỀU HƯỚNG PHÂN TRANG (PAGINATION)
+        if (paginationContainer) {
+            renderPaginationControls(paginationContainer, type, page, totalPages);
+        }
+
+    } catch (e) { 
+        console.error("Lỗi cào dữ liệu phân trang loạt phim:", e); 
+        grid.innerHTML = '<p style="color:#e50914;">Lỗi kết nối máy chủ dữ liệu phim. Duy thử tải lại trang xem nhé!</p>';
+    }
 }
 
-// --- TẢI TRANG CHỦ ---
+// Hàm vẽ các nút Trang trước, 1, 2, 3, Trang sau động
+function renderPaginationControls(container, type, currentPage, totalPages) {
+    container.innerHTML = '';
+
+    // Nút về trang trước (Prev)
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'page-btn';
+    prevBtn.innerText = '❮ Trước';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => window.location.href = `category.html?type=${type}&page=${currentPage - 1}`;
+    container.appendChild(prevBtn);
+
+    // Thuật toán hiển thị giới hạn các nút số trang xung quanh trang hiện tại để không bị tràn màn hình
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+        pageBtn.innerText = i;
+        pageBtn.onclick = () => window.location.href = `category.html?type=${type}&page=${i}`;
+        container.appendChild(pageBtn);
+    }
+
+    // Nút sang trang sau (Next)
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'page-btn';
+    nextBtn.innerText = 'Sau ❯';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => window.location.href = `category.html?type=${type}&page=${currentPage + 1}`;
+    container.appendChild(nextBtn);
+}
+
+// --- TẢI TRANG CHỦ INDEX.HTML ---
 async function loadMoviesFromServer() {
     try {
         const response = await fetch('https://cinematic-3gsh.onrender.com/api/movies');
