@@ -2,35 +2,27 @@ let hotMoviesList = [];
 let currentHeroIndex = 0;     
 
 document.addEventListener("DOMContentLoaded", async () => {
-    // 1. Kiểm tra tài khoản
     checkLoginStatus();
 
-    // 2. Kiểm tra xem đang ở trang chủ hay xem phim
     const urlParams = new URLSearchParams(window.location.search);
     const movieSlug = urlParams.get('slug');
 
     if (movieSlug) {
-        // Nếu ở trang detail, xử lý logo trắng
+        // Fix logo trắng bên trang detail
         const logo = document.querySelector('.logo, .logo-group span');
         if (logo) { logo.style.color = '#ffffff'; logo.style.textDecoration = 'none'; }
     } else {
-        // Tải danh sách phim và banner trang chủ
         await loadMoviesFromServer();
 
-        // Lắng nghe nút Enter trên ô tìm kiếm dài
         const searchInput = document.getElementById('searchInput');
         if (searchInput) {
             searchInput.addEventListener('keypress', async (e) => {
                 if (e.key === 'Enter') await handleSearch();
             });
-            // Thêm hiệu ứng focus đổi màu giống web mẫu
-            searchInput.onfocus = () => searchInput.style.borderColor = '#e50914';
-            searchInput.onblur = () => searchInput.style.borderColor = '#222';
         }
     }
 });
 
-// --- TẢI PHIM & ĐỒNG BỘ BANNER ---
 async function loadMoviesFromServer() {
     try {
         const response = await fetch('https://cinematic-3gsh.onrender.com/api/movies');
@@ -38,7 +30,7 @@ async function loadMoviesFromServer() {
 
         if (data.newMovies && data.newMovies.length > 0) {
             hotMoviesList = data.newMovies.slice(0, 5);
-            updateHeroBanner(currentHeroIndex);
+            updateHeroBanner(0);
         }
 
         renderMovieSection('newMoviesGrid', data.newMovies);
@@ -51,33 +43,35 @@ async function loadMoviesFromServer() {
     } catch (error) { console.error(error); }
 }
 
-// HÀM CẬP NHẬT BANNER: POSTER QUA PHẢI VÀ CHỮ QUA TRÁI XỊN SÒ
-function updateHeroBanner(index) {
-    const bgBlur = document.getElementById('heroBgBlur');
+// CẬP NHẬT BANNER LỚN FULL NỀN ĐÈ CHỮ LÊN ẢNH
+async function updateHeroBanner(index) {
+    const heroBanner = document.getElementById('heroBanner');
     const heroTitle = document.getElementById('heroTitle');
     const heroDesc = document.getElementById('heroDesc');
-    const rightPoster = document.getElementById('heroRightPoster');
     const heroPlayBtn = document.getElementById('heroPlayBtn');
 
-    if (hotMoviesList.length > 0 && heroTitle) {
+    if (hotMoviesList.length > 0 && heroBanner) {
         const movie = hotMoviesList[index];
         
-        // 1. Làm mờ nền phía sau
-        if (bgBlur) bgBlur.style.backgroundImage = `url(${movie.image_url})`;
+        // Gán trực tiếp ảnh phim làm hình nền Full khổ lớn
+        heroBanner.style.backgroundImage = `url(${movie.image_url})`;
+        if (heroTitle) heroTitle.innerText = movie.title;
         
-        // 2. Đổi chữ bên vế trái
-        heroTitle.innerText = movie.title;
-        heroDesc.innerText = `Chào mừng Duy đến với siêu phẩm điện ảnh hấp dẫn nhất năm. Phim chất lượng cao, tốc độ đường truyền siêu tốc ổn định, trải nghiệm rạp phim ngay tại nhà.`;
-        
-        // 3. Đổi ảnh poster lớn ở vế bên PHẢI
-        if (rightPoster) rightPoster.src = movie.image_url;
-        
-        // 4. Gắn link xem phim vào nút Play
+        // Khai thác mô tả phim từ API để hiển thị chi tiết
+        try {
+            const rawRes = await fetch(`https://ophim1.com/phim/${movie.slug}`);
+            const rawData = await rawRes.json();
+            if (heroDesc && rawData.movie) {
+                heroDesc.innerText = rawData.movie.content.replace(/<[^>]*>/g, '').slice(0, 160) + '...';
+            }
+        } catch (e) {
+            if (heroDesc) heroDesc.innerText = `Theo dõi ngay bộ phim hot ${movie.title} chất lượng Full HD vietsub mượt mà nhất tại Cine NC.`;
+        }
+
         if (heroPlayBtn) heroPlayBtn.onclick = () => window.location.href = `detail.html?slug=${movie.slug}`;
     }
 }
 
-// HÀM TƯƠNG TÁC CUỘN TRÁI PHẢI BANNER BẰNG NÚT BẤM MŨI TÊN
 function changeHeroSlide(direction) {
     currentHeroIndex += direction;
     if (currentHeroIndex >= hotMoviesList.length) currentHeroIndex = 0;
@@ -103,7 +97,6 @@ function renderMovieSection(elementId, movies) {
     });
 }
 
-// --- TÌM KIẾM ---
 async function handleSearch() {
     const input = document.getElementById('searchInput').value.trim();
     const searchSection = document.getElementById('searchResultSection');
@@ -140,7 +133,6 @@ async function handleSearch() {
     } catch (error) { console.error(error); }
 }
 
-// --- ĐĂNG NHẬP PROMPT ---
 function checkLoginStatus() {
     const userProfile = document.querySelector('.user-profile');
     if (!userProfile) return;
@@ -149,11 +141,8 @@ function checkLoginStatus() {
     if (loggedUser && loggedUser.token) {
         const avatarNode = userProfile.querySelector('.avatar');
         const usernameNode = userProfile.querySelector('.username');
-        const usertypeNode = userProfile.querySelector('.usertype');
-        
         if (avatarNode) avatarNode.innerText = 'D';
         if (usernameNode) usernameNode.innerText = loggedUser.username;
-        if (usertypeNode) usertypeNode.innerText = 'Thành viên VIP';
         userProfile.onclick = null;
     } else {
         userProfile.onclick = () => {
@@ -171,7 +160,7 @@ function checkLoginStatus() {
             .then(data => {
                 if (data.success) {
                     localStorage.setItem('loggedUser', JSON.stringify(data));
-                    alert("🎉 Đăng nhập rạp phim VIP thành công!");
+                    alert("🎉 Đăng nhập thành công!");
                     window.location.reload();
                 } else { alert(data.message); }
             });
