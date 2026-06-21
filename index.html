@@ -90,6 +90,7 @@
             font-size: 13px;
             font-weight: bold;
             transition: 0.2s;
+            cursor: pointer;
         }
         .view-all-btn:hover {
             color: #fff;
@@ -153,43 +154,46 @@
     </section>
 
     <main class="main-content" style="padding: 0 4%;">
-        <section class="movie-section" id="searchResultSection" style="display: none;">
-            <div class="section-header"><h2>🔍 Kết Quả Tìm Kiếm</h2></div>
+        <section class="movie-section" id="searchResultSection" style="display: none; background: #0c0c0e; border: 1px solid #1f1f23; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+            <div class="section-header">
+                <h2 id="searchResultTitle" style="color: #ffcc00;">🔍 Kết Quả Tìm Kiếm</h2>
+                <a onclick="closeViewAllSection()" class="view-all-btn" style="color: #aaa;">✕ Đóng lại</a>
+            </div>
             <div class="movie-grid" id="searchMoviesGrid"></div>
         </section>
 
         <section class="movie-section">
-            <div class="section-header"><h2>🔥 Phim Mới Cập Nhật</h2><a href="#" class="view-all-btn">Xem tất cả ›</a></div>
+            <div class="section-header"><h2>🔥 Phim Mới Cập Nhật</h2><a onclick="viewAllCategory('newMovies')" class="view-all-btn">Xem tất cả ›</a></div>
             <div class="movie-grid" id="newMoviesGrid"></div>
         </section>
 
         <section class="movie-section">
-            <div class="section-header"><h2>🇨🇳 Phim Trung Quốc</h2><a href="#" class="view-all-btn">Xem tất cả ›</a></div>
+            <div class="section-header"><h2>🇨🇳 Phim Trung Quốc</h2><a onclick="viewAllCategory('phimTrungQuoc')" class="view-all-btn">Xem tất cả ›</a></div>
             <div class="movie-grid" id="phimTrungQuocGrid"></div>
         </section>
 
         <section class="movie-section">
-            <div class="section-header"><h2>🇰🇷 Phim Hàn Quốc</h2><a href="#" class="view-all-btn">Xem tất cả ›</a></div>
+            <div class="section-header"><h2>🇰🇷 Phim Hàn Quốc</h2><a onclick="viewAllCategory('phimHanQuoc')" class="view-all-btn">Xem tất cả ›</a></div>
             <div class="movie-grid" id="phimHanQuocGrid"></div>
         </section>
 
         <section class="movie-section">
-            <div class="section-header"><h2>☠️ Phim Kinh Dị</h2><a href="#" class="view-all-btn">Xem tất cả ›</a></div>
+            <div class="section-header"><h2>☠️ Phim Kinh Dị</h2><a onclick="viewAllCategory('horror')" class="view-all-btn">Xem tất cả ›</a></div>
             <div class="movie-grid" id="horrorMovieGrid"></div>
         </section>
 
         <section class="movie-section">
-            <div class="section-header"><h2>🎬 Phim Bộ</h2><a href="#" class="view-all-btn">Xem tất cả ›</a></div>
+            <div class="section-header"><h2>🎬 Phim Bộ</h2><a onclick="viewAllCategory('phimBo')" class="view-all-btn">Xem tất cả ›</a></div>
             <div class="movie-grid" id="phimBoGrid"></div>
         </section>
 
         <section class="movie-section">
-            <div class="section-header"><h2>🎥 Phim Lẻ</h2><a href="#" class="view-all-btn">Xem tất cả ›</a></div>
+            <div class="section-header"><h2>🎥 Phim Lẻ</h2><a onclick="viewAllCategory('phimLe')" class="view-all-btn">Xem tất cả ›</a></div>
             <div class="movie-grid" id="phimLeGrid"></div>
         </section>
 
         <section class="movie-section">
-            <div class="section-header"><h2>⛩️ Anime</h2><a href="#" class="view-all-btn">Xem tất cả ›</a></div>
+            <div class="section-header"><h2>⛩️ Anime</h2><a onclick="viewAllCategory('anime')" class="view-all-btn">Xem tất cả ›</a></div>
             <div class="movie-grid" id="animeGrid"></div>
         </section>
     </main>
