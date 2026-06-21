@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     try {
-        const response = await fetch('http://localhost:5000/api/movies');
+        const response = await fetch('https://cinematic-3gsh.onrender.com/api/movies');
         const data = await response.json();
 
         if (data.newMovies && data.newMovies.length > 0) {
@@ -270,7 +270,7 @@ async function handleSearch() {
     mainContent.innerHTML = `<h2>KẾT QUẢ TÌM KIẾM CHO: "${input.toUpperCase()}"</h2><div class="movie-grid" id="searchGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:25px;"></div>`;
     const searchGrid = document.getElementById('searchGrid');
     try {
-        const response = await fetch(`http://localhost:5000/api/search?keyword=${encodeURIComponent(input)}`);
+        const response = await fetch(`https://cinematic-3gsh.onrender.com/api/search?keyword=${encodeURIComponent(input)}`);
         const movies = await response.json();
         searchGrid.innerHTML = '';
         if (movies.length === 0) { searchGrid.innerHTML = '<p style="color: #666; padding:10px;">Không tìm thấy phim.</p>'; return; }
