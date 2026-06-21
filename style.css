@@ -476,3 +476,17 @@ h2 {
 
 .movie-title { padding: 10px 12px; font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #eee; }
 .movie-card:hover .movie-title { color: #e50914; }
+.hero-arrow-btn:hover {
+    background: #e50914 !important;
+    border-color: #e50914 !important;
+    transform: translateY(-50%) scale(1.1);
+}
+.header .nav-btn:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+}
+.hero-banner {
+    background: #09090b !important;
+    border-radius: 12px;
+    margin: 20px 4% 0 4%;
+}
