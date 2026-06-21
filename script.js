@@ -1,323 +1,219 @@
-// Các biến toàn cục ghi nhớ bộ lọc để phục vụ phân trang
-let currentCategoryPath = '';
-let currentCategoryType = 'danh-sach'; 
-let currentCategoryName = 'Phim mới cập nhật';
-
-// --- BIẾN TOÀN CỤC PHỤC VỤ CAROUSEL AUTOMATIC HERO BANNER ---
-let hotMoviesList = [];       
-let currentHeroIndex = 0;     
-let heroAutoplayTimer = null; 
-
 document.addEventListener("DOMContentLoaded", async () => {
-    const grids = {
-        new: document.getElementById('newMoviesGrid'),
-        china: document.getElementById('phimTrungQuocGrid'),
-        korea: document.getElementById('phimHanQuocGrid'),
-        horror: document.getElementById('horrorMovieGrid'), 
-        series: document.getElementById('phimBoGrid'),
-        single: document.getElementById('phimLeGrid'),
-        anime: document.getElementById('animeGrid')
-    };
+    // Chạy kiểm tra trạng thái đăng nhập đầu tiên
+    checkLoginStatus();
+    
+    // Gọi tải danh sách phim từ Render API thật
+    await loadMovies();
 
+    // Lắng nghe sự kiện tìm kiếm phim
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                await handleSearch();
+            }
+        });
+    }
+});
+
+// Hàm tải phim chính từ Render Cloud
+async function loadMovies() {
     try {
         const response = await fetch('https://cinematic-3gsh.onrender.com/api/movies');
         const data = await response.json();
 
-        if (data.newMovies && data.newMovies.length > 0) {
-            hotMoviesList = data.newMovies.slice(0, 5); 
-            currentHeroIndex = 0;
-            await renderHeroSlide(currentHeroIndex);
-            startHeroAutoplay();
-        }
-
-        function renderRow(movies, gridElement) {
-            if (!gridElement) return;
-            gridElement.innerHTML = '';
-            if (!movies || movies.length === 0) {
-                gridElement.innerHTML = '<p style="color: #666; padding: 10px;">Đang cập nhật danh mục...</p>';
-                return;
-            }
-            movies.forEach(movie => {
-                const card = document.createElement('div');
-                card.className = 'movie-card';
-                const labelText = movie.label.split(' - ')[0] || 'HD';
-                const favClass = isFavorited(movie.slug) ? 'active' : '';
-
-                card.innerHTML = `
-                    <span class="label">${labelText}</span>
-                    <span class="fav-badge ${favClass}" data-slug="${movie.slug}">❤️</span>
-                    <img src="${movie.image_url}" alt="${movie.title}">
-                    <span class="episode-badge">FULL</span>
-                    <div class="movie-title">${movie.title}</div>
-                `;
-
-                card.querySelector('.fav-badge').onclick = (e) => {
-                    e.stopPropagation();
-                    toggleFavorite(movie);
-                    e.target.classList.toggle('active');
-                };
-
-                card.onclick = () => openPlayerBySlug(movie.slug);
-                gridElement.appendChild(card);
-            });
-        }
-
-        // Bốc phim Kinh Dị
-        try {
-            const horrorRes = await fetch('https://ophim1.com/v1/api/the-loai/kinh-di?page=1');
-            const horrorData = await horrorRes.json();
-            const horrorItems = horrorData.data?.items || [];
-            
-            const horrorMovies = horrorItems.slice(0, 10).map(item => {
-                let img = item.thumb_url;
-                if (!img.startsWith('http')) img = `https://img.ophim.live/uploads/movies/${img}`;
-                return { title: item.name, slug: item.slug, label: item.quality || 'HD', image_url: img };
-            });
-            renderRow(horrorMovies, grids.horror);
-        } catch (err) { console.error(err); }
-
-        renderRow(data.newMovies, grids.new);
-        renderRow(data.phimTrungQuoc, grids.china);
-        renderRow(data.phimHanQuoc, grids.korea);
-        renderRow(data.phimBo, grids.series);
-        renderRow(data.phimLe, grids.single);
-        renderRow(data.anime, grids.anime);
-
-    } catch (error) { console.error(error); }
-});
-
-// --- HÀM RENDER BANNER 2 LỚP HIỂN THỊ NGUYÊN POSTER PHIM CHUẨN ĐẸP ---
-async function renderHeroSlide(index) {
-    if (hotMoviesList.length === 0) return;
-    const movie = hotMoviesList[index];
-    
-    try {
-        const rawRes = await fetch(`https://ophim1.com/phim/${movie.slug}`);
-        const rawData = await rawRes.json();
-        const movieDetail = rawData.movie || {};
-
-        const directorText = movieDetail.director ? movieDetail.director.join(', ') : 'Đang cập nhật';
-        const actorText = movieDetail.actor ? movieDetail.actor.join(', ') : 'Đang cập nhật';
-        const descriptionText = movieDetail.content ? movieDetail.content.replace(/<[^>]*>/g, '').slice(0, 180) : 'Nội dung bộ phim bom tấn chất lượng cao đang chiếu...';
-
-        const heroBanner = document.getElementById('heroBanner');
-        if (heroBanner) {
-            heroBanner.innerHTML = `
-                <div class="hero-bg-blur" style="background-image: url(${movie.image_url});"></div>
-                <button class="hero-arrow hero-arrow-left" onclick="changeHeroSlide(-1); event.stopPropagation();">❮</button>
-                
-                <div class="hero-content">
-                    <span class="hero-badge">PHIM ĐANG CHIẾU</span>
-                    <h1>${movie.title}</h1>
-                    <p>${descriptionText}...</p>
-                    
-                    <div class="hero-buttons">
-                        <button class="btn-hero-vip play" id="heroPlayBtn">▶ PLAY</button>
-                        <button class="btn-hero-vip fav" id="heroFavBtn">❤ YÊU THÍCH</button>
-                    </div>
-
-                    <div class="hero-meta-info">
-                        <div class="hero-meta-item">🎬 <strong>Đạo diễn:</strong> ${directorText}</div>
-                        <div class="hero-meta-item">⭐ <strong>Diễn viên:</strong> ${actorText}</div>
-                    </div>
-                </div>
-
-                <img src="${movie.image_url}" class="hero-poster-main" alt="${movie.title}">
-                
-                <button class="hero-arrow hero-arrow-right" onclick="changeHeroSlide(1); event.stopPropagation();">❯</button>
-            `;
-            
-            document.getElementById('heroPlayBtn').onclick = () => {
-                localStorage.setItem('activeMovieInfo', JSON.stringify({ title: movie.title, image_url: movie.image_url, label: 'HOT' }));
-                window.location.href = `detail.html?slug=${movie.slug}`;
-            };
-            
-            const heroFavBtn = document.getElementById('heroFavBtn');
-            if (isFavorited(movie.slug)) {
-                heroFavBtn.innerHTML = '❤ ĐÃ LƯU TỦ';
-                heroFavBtn.style.background = 'rgba(255, 204, 0, 0.2)';
-            }
-            heroFavBtn.onclick = () => {
-                toggleFavorite(movie);
-                const check = isFavorited(movie.slug);
-                heroFavBtn.innerHTML = check ? '❤ ĐÃ LƯU TỦ' : '❤ YÊU THÍCH';
-                heroFavBtn.style.background = check ? 'rgba(255, 204, 0, 0.2)' : 'rgba(0, 0, 0, 0.6)';
-            };
-        }
-    } catch (err) { console.log("Lỗi dựng banner poster:", err); }
+        renderMovieSection('new-movies-grid', data.newMovies);
+        renderMovieSection('phim-trung-quoc-grid', data.phimTrungQuoc);
+        renderMovieSection('phim-han-quoc-grid', data.phimHanQuoc);
+        renderMovieSection('phim-hanh-dong-grid', data.phimHanhDong);
+        renderMovieSection('anime-grid', data.anime);
+        renderMovieSection('phim-le-grid', data.phimLe);
+        renderMovieSection('phim-bo-grid', data.phimBo);
+    } catch (error) {
+        console.error("Lỗi khi tải danh sách phim từ Cloud Render:", error);
+    }
 }
 
-function changeHeroSlide(direction) {
-    clearInterval(heroAutoplayTimer);
-    currentHeroIndex += direction;
-    if (currentHeroIndex >= hotMoviesList.length) currentHeroIndex = 0;
-    if (currentHeroIndex < 0) currentHeroIndex = hotMoviesList.length - 1;
-    renderHeroSlide(currentHeroIndex);
-    startHeroAutoplay();
+// Hàm render thẻ phim ra HTML
+function renderMovieSection(elementId, movies) {
+    const grid = document.getElementById(elementId);
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (!movies || movies.length === 0) {
+        grid.innerHTML = '<p class="no-data">Đang cập nhật phim...</p>';
+        return;
+    }
+
+    movies.forEach(movie => {
+        const card = document.createElement('div');
+        card.className = 'movie-card';
+        card.onclick = () => openMovieDetail(movie.slug, movie.title, movie.image_url);
+
+        card.innerHTML = `
+            <div class="movie-img-container">
+                <img src="${movie.image_url}" alt="${movie.title}" loading="lazy">
+                <span class="movie-label">${movie.label}</span>
+            </div>
+            <div class="movie-title">${movie.title}</div>
+        `;
+        grid.appendChild(card);
+    });
 }
 
-function startHeroAutoplay() {
-    heroAutoplayTimer = setInterval(() => {
-        currentHeroIndex++;
-        if (currentHeroIndex >= hotMoviesList.length) currentHeroIndex = 0;
-        renderHeroSlide(currentHeroIndex);
-    }, 5000);
-}
-
-function scrollRow(gridId, direction) {
-    const movieGrid = document.getElementById(gridId);
-    if (movieGrid) movieGrid.scrollBy({ left: movieGrid.clientWidth * 0.8 * direction, behavior: 'smooth' });
-}
-
-function openPlayerBySlug(slug) {
-    const clickedCard = event.currentTarget;
-    const title = clickedCard.querySelector('.movie-title')?.textContent || '';
-    const image_url = clickedCard.querySelector('img')?.src || '';
-    const label = clickedCard.querySelector('.label')?.textContent || 'HD';
-    localStorage.setItem('activeMovieInfo', JSON.stringify({ title, image_url, label }));
-    clearInterval(heroAutoplayTimer); 
-    window.location.href = `detail.html?slug=${slug}`;
-}
-
-async function filterMoviesByUrl(apiUrlPath, displayName, page = 1) {
-    const parts = apiUrlPath.split('/');
-    currentCategoryType = parts[0]; 
-    currentCategoryPath = parts[1]; 
-    currentCategoryName = displayName;
-    await executeFilterFetch(page);
-}
-
-async function executeFilterFetch(page) {
-    const mainContent = document.getElementById('mainMovieContent');
-    const paginContainer = document.getElementById('paginationContainer');
-    document.getElementById('heroBanner').style.display = 'none';
-    clearInterval(heroAutoplayTimer);
-    
-    mainContent.innerHTML = `<h2>DANH MỤC: ${currentCategoryName.toUpperCase()} (TRANG ${page})</h2><div class="movie-grid" id="filterGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:20px;"></div>`;
-    const filterGrid = document.getElementById('filterGrid');
-    filterGrid.innerHTML = '<p style="color: #ffcc00; padding:10px;">Hệ thống đang tải dữ liệu phim bạt ngàn...</p>';
-
-    try {
-        const res = await fetch(`https://ophim1.com/v1/api/${currentCategoryType}/${currentCategoryPath}?page=${page}`);
-        const result = await res.json();
-        const items = result.data?.items || [];
-        const paginationInfo = result.data?.params?.pagination;
-        const totalPages = paginationInfo ? Math.ceil(paginationInfo.totalItems / paginationInfo.totalItemsPerPage) : 1;
-        
-        filterGrid.innerHTML = '';
-
-        if (items.length === 0) {
-            filterGrid.innerHTML = '<p style="color: #aaa; padding:10px;">Mục này hiện đã hết phim.</p>'; return;
-        }
-
-        items.forEach(item => {
-            let img = item.thumb_url;
-            if (!img.startsWith('http')) img = `https://img.ophim.live/uploads/movies/${img}`;
-            const movieObj = { title: item.name, slug: item.slug, label: item.quality || 'HD', image_url: img };
-            
-            const card = document.createElement('div');
-            card.className = 'movie-card';
-            const favClass = isFavorited(item.slug) ? 'active' : '';
-
-            card.innerHTML = `
-                <span class="label">${item.quality || 'HD'}</span>
-                <span class="fav-badge ${favClass}">❤️</span>
-                <img src="${img}" alt="${item.name}">
-                <span class="episode-badge">FULL</span>
-                <div class="movie-title">${item.name}</div>
-            `;
-            card.querySelector('.fav-badge').onclick = (e) => {
-                e.stopPropagation(); toggleFavorite(movieObj); e.target.classList.toggle('active');
-            };
-            card.onclick = () => openPlayerBySlug(movieObj.slug);
-            filterGrid.appendChild(card);
-        });
-
-        if (paginContainer && totalPages > 1) {
-            let paginHTML = '';
-            if (page > 1) paginHTML += `<button onclick="executeFilterFetch(${page - 1})" style="padding: 8px 14px; background: #161618; color: #fff; border: 1px solid #333; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 0 2px;">❮ Trước</button>`;
-            let startPage = Math.max(1, page - 2);
-            let endPage = Math.min(totalPages, page + 2);
-            for (let i = startPage; i <= endPage; i++) {
-                const activeStyle = (i === page) ? 'background: #e50914; border-color: #e50914;' : 'background: #161618; border-color: #333;';
-                paginHTML += `<button onclick="executeFilterFetch(${i})" style="padding: 8px 14px; ${activeStyle} color: #fff; border: 1px solid; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 0 2px;">${i}</button>`;
-            }
-            if (page < totalPages) paginHTML += `<button onclick="executeFilterFetch(${page + 1})" style="padding: 8px 14px; background: #161618; color: #fff; border: 1px solid #333; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 0 2px;">Sau ❯</button>`;
-            paginContainer.innerHTML = paginHTML + `<span style="color:#666; font-size:13px; margin-left:10px;">Tổng: ${totalPages} trang</span>`;
-        }
-    } catch (err) { filterGrid.innerHTML = '<p style="color: red; padding:10px;">Lỗi kết nối API!</p>'; }
-}
-
-async function switchCategory(categoryKey, element) {
-    document.querySelectorAll('nav .nav-btn').forEach(btn => btn.classList.remove('active'));
-    if (element) element.classList.add('active');
-    if (categoryKey === 'all') { window.location.reload(); return; }
-    if (categoryKey === 'favorites') { renderFavoritePage(); return; }
-
-    if (categoryKey === 'phimTrungQuoc') await filterMoviesByUrl('quoc-gia/trung-quoc', 'Phim Trung Quốc');
-    if (categoryKey === 'phimHanQuoc') await filterMoviesByUrl('quoc-gia/han-quoc', 'Phim Hàn Quốc');
-}
-
+// Hàm xử lý tìm kiếm phim từ Render API thật
 async function handleSearch() {
-    const input = document.getElementById('searchInput').value.trim();
-    const mainContent = document.getElementById('mainMovieContent');
-    const paginContainer = document.getElementById('paginationContainer');
-    if (input === "") return;
-    document.getElementById('heroBanner').style.display = 'none';
-    if (paginContainer) paginContainer.innerHTML = '';
-    clearInterval(heroAutoplayTimer); 
-    
-    mainContent.innerHTML = `<h2>KẾT QUẢ TÌM KIẾM CHO: "${input.toUpperCase()}"</h2><div class="movie-grid" id="searchGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:25px;"></div>`;
-    const searchGrid = document.getElementById('searchGrid');
+    const input = document.getElementById('search-input').value.trim();
+    const searchSection = document.getElementById('search-result-section');
+    const searchGrid = document.getElementById('search-movies-grid');
+
+    if (!input) {
+        if (searchSection) searchSection.style.display = 'none';
+        return;
+    }
+
     try {
         const response = await fetch(`https://cinematic-3gsh.onrender.com/api/search?keyword=${encodeURIComponent(input)}`);
         const movies = await response.json();
-        searchGrid.innerHTML = '';
-        if (movies.length === 0) { searchGrid.innerHTML = '<p style="color: #666; padding:10px;">Không tìm thấy phim.</p>'; return; }
-        movies.forEach(movie => {
-            const card = document.createElement('div');
-            card.className = 'movie-card';
-            const labelText = movie.label.split(' - ')[0] || 'HD';
-            const favClass = isFavorited(movie.slug) ? 'active' : '';
-            card.innerHTML = `
-                <span class="label">${labelText}</span>
-                <span class="fav-badge ${favClass}">❤️</span>
-                <img src="${movie.image_url}" alt="${movie.title}">
-                <span class="episode-badge">FULL</span>
-                <div class="movie-title">${movie.title}</div>
-            `;
-            card.querySelector('.fav-badge').onclick = (e) => { e.stopPropagation(); toggleFavorite(movie); e.target.classList.toggle('active'); };
-            card.onclick = () => openPlayerBySlug(movie.slug);
-            searchGrid.appendChild(card);
+
+        if (searchSection && searchGrid) {
+            searchSection.style.display = 'block';
+            searchGrid.innerHTML = '';
+            
+            if (movies.length === 0) {
+                searchGrid.innerHTML = '<p class="no-data">Không tìm thấy phim phù hợp.</p>';
+            } else {
+                movies.forEach(movie => {
+                    const card = document.createElement('div');
+                    card.className = 'movie-card';
+                    card.onclick = () => openMovieDetail(movie.slug, movie.title, movie.image_url);
+                    card.innerHTML = `
+                        <div class="movie-img-container">
+                            <img src="${movie.image_url}" alt="${movie.title}">
+                            <span class="movie-label">${movie.label}</span>
+                        </div>
+                        <div class="movie-title">${movie.title}</div>
+                    `;
+                    searchGrid.appendChild(card);
+                });
+            }
+            searchSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    } catch (error) {
+        console.error("Lỗi tìm kiếm:", error);
+    }
+}
+
+// Hàm mở modal chi tiết phim và tập phim
+async function openMovieDetail(slug, title, imageUrl) {
+    const modal = document.getElementById('movie-modal');
+    if (!modal) return;
+
+    document.getElementById('modal-title').innerText = title;
+    document.getElementById('modal-img').src = imageUrl;
+    document.getElementById('modal-desc').innerText = "Đang tải nội dung mô tả...";
+    document.getElementById('episode-list').innerHTML = "Đang tải danh sách tập...";
+
+    modal.style.display = 'block';
+
+    try {
+        const response = await fetch(`https://cinematic-3gsh.onrender.com/api/movie-detail?slug=${slug}`);
+        const data = await response.json();
+
+        document.getElementById('modal-desc').innerText = data.description;
+        const epList = document.getElementById('episode-list');
+        epList.innerHTML = '';
+
+        if (!data.episodes || data.episodes.length === 0) {
+            epList.innerHTML = '<p>Phim đang được cập nhật tập mới.</p>';
+            return;
+        }
+
+        data.episodes.forEach(ep => {
+            const btn = document.createElement('button');
+            btn.className = 'ep-btn';
+            btn.innerText = ep.name;
+            btn.onclick = () => {
+                const playerSection = document.getElementById('video-player-section');
+                const iframe = document.getElementById('video-iframe');
+                if (playerSection && iframe) {
+                    iframe.src = ep.link;
+                    playerSection.style.display = 'block';
+                    playerSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            };
+            epList.appendChild(btn);
         });
-    } catch (error) { searchGrid.innerHTML = '<p style="color: red; padding:10px;">Lỗi hệ thống!</p>'; }
+    } catch (error) {
+        console.error("Lỗi chi tiết phim:", error);
+    }
 }
 
-function getFavorites() { return JSON.parse(localStorage.getItem('myMovieFavs')) || []; }
-function isFavorited(slug) { return getFavorites().some(m => m.slug === slug); }
-function toggleFavorite(movie) {
-    let favs = getFavorites();
-    if (isFavorited(movie.slug)) { favs = favs.filter(m => m.slug !== movie.slug); } else { favs.push(movie); }
-    localStorage.setItem('myMovieFavs', JSON.stringify(favs));
+function closeModal() {
+    const modal = document.getElementById('movie-modal');
+    if (modal) modal.style.display = 'none';
+    const iframe = document.getElementById('video-iframe');
+    if (iframe) iframe.src = '';
+    const playerSection = document.getElementById('video-player-section');
+    if (playerSection) playerSection.style.display = 'none';
 }
 
-function renderFavoritePage() {
-    const mainContent = document.getElementById('mainMovieContent');
-    const paginContainer = document.getElementById('paginationContainer');
-    const favs = getFavorites();
-    document.getElementById('heroBanner').style.display = 'none';
-    if (paginContainer) paginContainer.innerHTML = '';
-    clearInterval(heroAutoplayTimer);
-    mainContent.innerHTML = `<h2>❤️ TỦ PHIM YÊU THÍCH CỦA BẠN</h2><div class="movie-grid" id="favGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:20px;"></div>`;
-    const favGrid = document.getElementById('favGrid');
-    if (favs.length === 0) { favGrid.innerHTML = '<p style="color: #666; padding: 10px;">Tủ phim trống.</p>'; return; }
-    favs.forEach(movie => {
-        const card = document.createElement('div'); card.className = 'movie-card';
-        card.innerHTML = `<span class="label">${movie.label}</span><span class="fav-badge active">❤️</span><img src="${movie.image_url}" alt="${movie.title}"><span class="episode-badge">FULL</span><div class="movie-title">${movie.title}</div>`;
-        card.querySelector('.fav-badge').onclick = (e) => { e.stopPropagation(); toggleFavorite(movie); renderFavoritePage(); };
-        card.onclick = () => openPlayerBySlug(movie.slug); favGrid.appendChild(card);
-    });
+// --- HỆ THỐNG KIỂM TRA ĐĂNG NHẬP / ĐĂNG XUẤT (MỚI THÊM) ---
+function checkLoginStatus() {
+    const userProfile = document.querySelector('.user-profile');
+    if (!userProfile) return;
+
+    const loggedUser = JSON.parse(localStorage.getItem('loggedUser'));
+
+    if (loggedUser && loggedUser.token) {
+        userProfile.innerHTML = `
+            <div class="avatar" style="background: #ffcc00; color: #000; font-weight: bold;">D</div>
+            <div class="user-info">
+                <span class="username" style="font-weight: bold; color: #fff;">${loggedUser.username}</span>
+                <span class="usertype" style="color: #ffcc00; font-size: 11px;">${loggedUser.usertype}</span>
+            </div>
+            <span class="logout-icon" title="Đăng xuất" onclick="handleLogout(event)" style="margin-left: 12px; cursor: pointer; font-size: 16px;">🚪</span>
+        `;
+        userProfile.onclick = null; 
+    } else {
+        userProfile.innerHTML = `
+            <div class="avatar" style="background: #444; color: #aaa;">?</div>
+            <div class="user-info">
+                <span class="username" style="color: #ffcc00; font-weight: bold;">Đăng nhập</span>
+                <span class="usertype" style="color: #888; font-size: 11px;">Khách qua đường</span>
+            </div>
+        `;
+        userProfile.onclick = () => {
+            const username = prompt("Nhập tên đăng nhập (Mặc định: TruongDuyVIP):");
+            if (!username) return;
+            const password = prompt("Nhập mật khẩu (Mặc định: 123):");
+            if (!password) return;
+
+            fetch('https://cinematic-3gsh.onrender.com/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.setItem('loggedUser', JSON.stringify(data));
+                    alert("🎉 Đăng nhập hệ thống rạp phim VIP thành công!");
+                    checkLoginStatus();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(err => alert("Lỗi kết nối server!"));
+        };
+    }
 }
-function toggleFilterBar() { const bar = document.getElementById('filterBar'); if (bar) bar.style.display = (bar.style.display === 'flex') ? 'none' : 'flex'; }
-function quickScroll(sectionId) { const el = document.getElementById(sectionId); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
-function checkLoginStatus() {}
+
+function handleLogout(event) {
+    event.stopPropagation();
+    if (confirm("Duy có chắc muốn đăng xuất tài khoản VIP không?")) {
+        localStorage.removeItem('loggedUser');
+        alert("👋 Đã đăng xuất tài khoản!");
+        window.location.reload();
+    }
+}

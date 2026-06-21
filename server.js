@@ -10,6 +10,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 
+// --- HỆ THỐNG XỬ LÝ ĐĂNG NHẬP (MỚI THÊM) ---
+const MOCK_USER = {
+    username: "TruongDuyVIP",
+    password: "123"
+};
+
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    if (username === MOCK_USER.username && password === MOCK_USER.password) {
+        return res.json({
+            success: true,
+            username: MOCK_USER.username,
+            usertype: "Tài khoản VIP",
+            token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.DuyCineVIPToken"
+        });
+    } else {
+        return res.json({ success: false, message: "Sai tên đăng nhập hoặc mật khẩu rồi Duy ơi!" });
+    }
+});
+
 // Hàm helper kéo dữ liệu an toàn từ API v1
 async function fetchMoviesFromV1Category(url) {
     try {
@@ -23,7 +43,6 @@ async function fetchMoviesFromV1Category(url) {
 
 app.get('/api/movies', async (req, res) => {
     try {
-        // Gọi đồng thời các API chính thức, tách biệt Trung Quốc và Hàn Quốc ra khỏi danh mục phim bộ chung
         const [
             rawNew, 
             rawSingle, 
@@ -36,11 +55,10 @@ app.get('/api/movies', async (req, res) => {
             fetchMoviesFromV1Category('https://ophim1.com/v1/api/danh-sach/phim-le?page=1'),
             fetchMoviesFromV1Category('https://ophim1.com/v1/api/danh-sach/phim-bo?page=1'),
             fetchMoviesFromV1Category('https://ophim1.com/v1/api/danh-sach/hoat-hinh?page=1'),
-            fetchMoviesFromV1Category('https://ophim1.com/v1/api/quoc-gia/trung-quoc?page=1'), // Gọi thẳng kho phim Trung
-            fetchMoviesFromV1Category('https://ophim1.com/v1/api/quoc-gia/han-quoc?page=1')   // Gọi thẳng kho phim Hàn
+            fetchMoviesFromV1Category('https://ophim1.com/v1/api/quoc-gia/trung-quoc?page=1'),
+            fetchMoviesFromV1Category('https://ophim1.com/v1/api/quoc-gia/han-quoc?page=1')
         ]);
 
-        // Hàm format chuyển đổi thông tin thẻ phim đồng bộ ra giao diện
         const formatMovie = (item) => {
             let img = item.thumb_url || '';
             if (img && !img.startsWith('http')) {
@@ -55,11 +73,10 @@ app.get('/api/movies', async (req, res) => {
             };
         };
 
-        // Trả về dữ liệu chính xác theo đúng quốc gia và thể loại
         res.json({
             newMovies: rawNew.slice(0, 10).map(formatMovie),
-            phimTrungQuoc: rawChina.slice(0, 10).map(formatMovie), // Chuẩn 100% phim Trung mới nhất
-            phimHanQuoc: rawKorea.slice(0, 10).map(formatMovie),   // Chuẩn 100% phim Hàn mới nhất
+            phimTrungQuoc: rawChina.slice(0, 10).map(formatMovie),
+            phimHanQuoc: rawKorea.slice(0, 10).map(formatMovie),
             phimHanhDong: rawSingle.slice(0, 10).map(formatMovie),
             anime: rawAnime.slice(0, 10).map(formatMovie),
             phimLe: rawSingle.slice(2, 12).map(formatMovie),
@@ -71,7 +88,6 @@ app.get('/api/movies', async (req, res) => {
     }
 });
 
-// API chi tiết tập phim
 app.get('/api/movie-detail', async (req, res) => {
     const slug = req.query.slug;
     try {
@@ -89,7 +105,6 @@ app.get('/api/movie-detail', async (req, res) => {
     }
 });
 
-// API Tìm kiếm phim
 app.get('/api/search', async (req, res) => {
     const keyword = req.query.keyword;
     if (!keyword) return res.json([]);
