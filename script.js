@@ -1,17 +1,19 @@
 let hotMoviesList = [];       
 let currentHeroIndex = 0;     
-let allMoviesCachedData = null; // Bộ nhớ đệm lưu trữ dữ liệu phim tổng hợp
-let horrorMoviesCachedData = []; // Bộ nhớ đệm lưu phim kinh dị
 
 document.addEventListener("DOMContentLoaded", async () => {
     checkLoginStatus();
 
     const urlParams = new URLSearchParams(window.location.search);
     const movieSlug = urlParams.get('slug');
+    const categoryType = urlParams.get('type');
 
     if (movieSlug) {
         const logo = document.querySelector('.logo, .logo-group span');
         if (logo) { logo.style.color = '#ffffff'; logo.style.textDecoration = 'none'; }
+    } else if (categoryType) {
+        // Xử lý trang loạt phim danh mục
+        await loadCategoryPageData(categoryType);
     } else {
         await loadMoviesFromServer();
 
@@ -24,11 +26,61 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
+// --- TẢI TOÀN BỘ PHIM CHO TRANG CATEGORY.HTML ---
+async function loadCategoryPageData(type) {
+    const grid = document.getElementById('categoryMovieGrid');
+    const titleHeader = document.getElementById('categoryPageTitle');
+    if (!grid || !titleHeader) return;
+
+    let apiUrl = 'https://cinematic-3gsh.onrender.com/api/movies';
+    
+    const titleMap = {
+        'newMovies': '🔥 Toàn Bộ Phim Mới Cập Nhật',
+        'phimTrungQuoc': '🇨🇳 Toàn Bộ Phim Trung Quốc Quốc Dân',
+        'phimHanQuoc': '🇰🇷 Toàn Bộ Phim Hàn Quốc Lãng Mạn',
+        'phimBo': '🎬 Toàn Bộ Danh Sách Phim Bộ Dài Tập',
+        'phimLe': '🎥 Toàn Bộ Kho Phim Lẻ Chọn Lọc',
+        'anime': '⛩️ Toàn Bộ Thế Giới Phim Hoạt Hình Anime',
+        'horror': '☠️ Toàn Bộ Khối Phim Kinh Dị Rùng Rợn'
+    };
+    titleHeader.innerText = titleMap[type] || "Danh Sách Phim";
+
+    try {
+        let movies = [];
+        if (type === 'horror') {
+            const res = await fetch('https://ophim1.com/v1/api/the-loai/kinh-di?page=1');
+            const resData = await res.json();
+            movies = (resData.data?.items || []).map(item => {
+                let img = item.thumb_url;
+                if (!img.startsWith('http')) img = `https://img.ophim.live/uploads/movies/${img}`;
+                return { title: item.name, slug: item.slug, image_url: img };
+            });
+        } else {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            movies = data[type] || [];
+        }
+
+        grid.innerHTML = '';
+        movies.forEach(movie => {
+            const card = document.createElement('div');
+            card.className = 'movie-card';
+            card.onclick = () => window.location.href = `detail.html?slug=${movie.slug}`;
+            card.innerHTML = `
+                <div class="movie-img-container"><img src="${movie.image_url}" alt="${movie.title}"></div>
+                <div class="movie-title">${movie.title}</div>
+            `;
+            grid.appendChild(card);
+        });
+
+    } catch (e) { console.error(e); }
+}
+
+// --- TẢI TRANG CHỦ ---
 async function loadMoviesFromServer() {
     try {
         const response = await fetch('https://cinematic-3gsh.onrender.com/api/movies');
         const data = await response.json();
-        allMoviesCachedData = data; // Lưu trữ vào bộ nhớ đệm
 
         if (data.newMovies && data.newMovies.length > 0) {
             hotMoviesList = data.newMovies.slice(0, 5);
@@ -42,89 +94,18 @@ async function loadMoviesFromServer() {
         renderMovieSection('phimLeGrid', data.phimLe);
         renderMovieSection('animeGrid', data.anime);
 
-        // Tải danh mục kinh dị
         try {
             const horrorRes = await fetch('https://ophim1.com/v1/api/the-loai/kinh-di?page=1');
             const horrorData = await horrorRes.json();
-            horrorMoviesCachedData = (horrorData.data?.items || []).map(item => {
+            const horrorMovies = (horrorData.data?.items || []).slice(0, 10).map(item => {
                 let img = item.thumb_url;
                 if (!img.startsWith('http')) img = `https://img.ophim.live/uploads/movies/${img}`;
                 return { title: item.name, slug: item.slug, image_url: img };
             });
-            renderMovieSection('horrorMovieGrid', horrorMoviesCachedData.slice(0, 10));
-        } catch (e) { console.log("Lỗi tải mục kinh dị:", e); }
+            renderMovieSection('horrorMovieGrid', horrorMovies);
+        } catch (e) { console.log(e); }
 
     } catch (error) { console.error(error); }
-}
-
-// --- LOGIC XỬ LÝ BẤM "XEM TẤT CẢ" HIỂN THỊ LOẠT PHIM BẠT NGÀN ---
-function viewAllCategory(categoryKey) {
-    const searchSection = document.getElementById('searchResultSection');
-    const searchGrid = document.getElementById('searchMoviesGrid');
-    const searchTitle = document.getElementById('searchResultTitle');
-
-    if (!searchSection || !searchGrid || !searchTitle) return;
-
-    let moviesToRender = [];
-    let titleText = "";
-
-    // Trích xuất dữ liệu loạt phim tương ứng theo danh mục đã bấm
-    if (categoryKey === 'horror') {
-        moviesToRender = horrorMoviesCachedData;
-        titleText = "☠️ Toàn Bộ Loạt Phim Kinh Dị";
-    } else if (allMoviesCachedData) {
-        switch (categoryKey) {
-            case 'newMovies':
-                moviesToRender = allMoviesCachedData.newMovies;
-                titleText = "🔥 Toàn Bộ Phim Mới Cập Nhật";
-                break;
-            case 'phimTrungQuoc':
-                moviesToRender = allMoviesCachedData.phimTrungQuoc;
-                titleText = "🇨🇳 Toàn Bộ Phim Trung Quốc Quốc Dân";
-                break;
-            case 'phimHanQuoc':
-                moviesToRender = allMoviesCachedData.phimHanQuoc;
-                titleText = "🇰🇷 Toàn Bộ Loạt Phim Hàn Quốc Lãng Mạn";
-                break;
-            case 'phimBo':
-                moviesToRender = allMoviesCachedData.phimBo;
-                titleText = "🎬 Toàn Bộ Danh Sách Phim Bộ Dài Tập";
-                break;
-            case 'phimLe':
-                moviesToRender = allMoviesCachedData.phimLe;
-                titleText = "🎥 Toàn Bộ Kho Phim Lẻ Chọn Lọc";
-                break;
-            case 'anime':
-                moviesToRender = allMoviesCachedData.anime;
-                titleText = "⛩️ Toàn Bộ Thế Giới Phim Hoạt Hình Anime";
-                break;
-        }
-    }
-
-    // Đổ danh sách loạt phim đầy đủ lên khối hiển thị
-    searchTitle.innerText = titleText;
-    searchSection.style.display = 'block';
-    searchGrid.innerHTML = '';
-
-    moviesToRender.forEach(movie => {
-        const card = document.createElement('div');
-        card.className = 'movie-card';
-        card.onclick = () => window.location.href = `detail.html?slug=${movie.slug}`;
-        card.innerHTML = `
-            <div class="movie-img-container"><img src="${movie.image_url}" alt="${movie.title}"></div>
-            <div class="movie-title">${movie.title}</div>
-        `;
-        searchGrid.appendChild(card);
-    });
-
-    // Cuộn mượt màn hình lên vùng xem danh sách phim
-    searchSection.scrollIntoView({ behavior: 'smooth' });
-}
-
-// Hàm đóng cụm loạt phim khi xem xong
-function closeViewAllSection() {
-    const searchSection = document.getElementById('searchResultSection');
-    if (searchSection) searchSection.style.display = 'none';
 }
 
 async function updateHeroBanner(index) {
@@ -182,7 +163,6 @@ async function handleSearch() {
     const input = document.getElementById('searchInput').value.trim();
     const searchSection = document.getElementById('searchResultSection');
     const searchGrid = document.getElementById('searchMoviesGrid');
-    const searchTitle = document.getElementById('searchResultTitle');
 
     if (!input) {
         if (searchSection) searchSection.style.display = 'none';
@@ -194,7 +174,6 @@ async function handleSearch() {
         const movies = await response.json();
 
         if (searchSection && searchGrid) {
-            if (searchTitle) searchTitle.innerText = "🔍 Kết Quả Tìm Kiếm Phim";
             searchSection.style.display = 'block';
             searchGrid.innerHTML = '';
             if (movies.length === 0) {

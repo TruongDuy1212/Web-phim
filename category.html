@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh Mục Phim - Cinematic</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .category-container { padding: 30px 4%; }
+        .category-title-header {
+            font-size: 24px;
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 25px;
+            border-left: 4px solid #e50914;
+            padding-left: 12px;
+        }
+        .category-movie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header" style="display: flex; align-items: center; justify-content: space-between; padding: 15px 4%; background: #060606; border-bottom: 1px solid #111;">
+        <div class="header-left">
+            <div class="logo-group" onclick="window.location.href='index.html'" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <div style="background: #e50914; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 14px; box-shadow: 0 0 10px rgba(229, 9, 20, 0.5);">▶</div>
+                <span style="color: #ffffff; font-weight: 900; font-size: 22px; font-family: sans-serif;">Cinematic</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <nav>
+                <a href="index.html" class="nav-btn active" style="color: #fff; text-decoration: none; font-size: 14px; font-weight: bold;">🧭 Quay lại trang chủ</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="category-container">
+        <h2 class="category-title-header" id="categoryPageTitle">Đang tải danh mục...</h2>
+        <div class="category-movie-grid" id="categoryMovieGrid"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
