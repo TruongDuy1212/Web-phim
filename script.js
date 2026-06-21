@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const logo = document.querySelector('.logo, .logo-group span');
         if (logo) { logo.style.color = '#ffffff'; logo.style.textDecoration = 'none'; }
     } else if (categoryType) {
-        // --- NẾU ĐANG Ở TRANG CATEGORY.HTML $\rightarrow$ TẢI PHIM PHÂN TRANG ---
+        // --- ĐANG Ở TRANG CATEGORY.HTML $\rightarrow$ TẢI PHIM PHÂN TRANG KHÍT LƯỚI ---
         await loadCategoryPageData(categoryType, currentPage);
     } else {
         await loadMoviesFromServer();
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // =========================================================================
-// 🌐 KHỐI XỬ LÝ LẤY TẤT CẢ PHIM + PHÂN TRANG CHO CATEGORY.HTML
+// 🌐 KHỐI XỬ LÝ LẤY ĐỦ PHIM ĐỂ KHÍT LƯỚI (MỖI HÀNG TRÒN 7 PHIM)
 // =========================================================================
 async function loadCategoryPageData(type, page) {
     const grid = document.getElementById('categoryMovieGrid');
@@ -56,45 +56,56 @@ async function loadCategoryPageData(type, page) {
     };
     titleHeader.innerText = `${titleMap[type] || "Danh Sách Phim"} - Trang ${page}`;
 
-    // Ánh xạ từ danh mục của Duy sang link API phân trang gốc của OPhim
+    // Ép API OPhim v1 trả về số lượng phim lớn hơn (limit=28 phim để chia hết cho 7 phim/hàng)
     let targetApiUrl = '';
     if (type === 'newMovies') {
-        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-moi-cap-nhat?page=${page}`;
+        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-moi-cap-nhat?page=${page}&limit=28`;
     } else if (type === 'phimTrungQuoc') {
-        targetApiUrl = `https://ophim1.com/v1/api/quoc-gia/trung-quoc?page=${page}`;
+        targetApiUrl = `https://ophim1.com/v1/api/quoc-gia/trung-quoc?page=${page}&limit=28`;
     } else if (type === 'phimHanQuoc') {
-        targetApiUrl = `https://ophim1.com/v1/api/quoc-gia/han-quoc?page=${page}`;
+        targetApiUrl = `https://ophim1.com/v1/api/quoc-gia/han-quoc?page=${page}&limit=28`;
     } else if (type === 'phimBo') {
-        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-bo?page=${page}`;
+        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-bo?page=${page}&limit=28`;
     } else if (type === 'phimLe') {
-        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-le?page=${page}`;
+        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/phim-le?page=${page}&limit=28`;
     } else if (type === 'anime') {
-        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/hoat-hinh?page=${page}`;
+        targetApiUrl = `https://ophim1.com/v1/api/danh-sach/hoat-hinh?page=${page}&limit=28`;
     } else if (type === 'horror') {
-        targetApiUrl = `https://ophim1.com/v1/api/the-loai/kinh-di?page=${page}`;
+        targetApiUrl = `https://ophim1.com/v1/api/the-loai/kinh-di?page=${page}&limit=28`;
     }
 
     try {
-        grid.innerHTML = '<p style="color:#aaa; padding: 20px 0;">Hệ thống đang bốc dữ liệu loạt phim, Duy đợi một chút nhé...</p>';
+        grid.innerHTML = '<p style="color:#aaa; padding: 20px 0;">Hệ thống đang đồng bộ kho phim bạt ngàn cho khít giao diện...</p>';
         
         const res = await fetch(targetApiUrl);
         const resData = await res.json();
         
-        const items = resData.data?.items || resData.items || [];
+        let items = resData.data?.items || resData.items || [];
         const paginationInfo = resData.data?.params?.pagination || {};
         
-        // Tính toán tổng số trang dựa trên dữ liệu API trả về thật
-        const totalItems = paginationInfo.totalItemsCount || 100;
-        const totalPages = Math.ceil(totalItems / (paginationInfo.totalItemsPerPage || 10)) || 10;
+        // Thuật toán lấy tròn số phim lấp đầy: nếu có nhiều hơn 14 phim, lấy tròn 14 hoặc 21 hoặc 28 phim để chia hết cho 7
+        if (items.length > 14) {
+            if (items.length >= 28) {
+                items = items.slice(0, 28); // Đủ 4 hàng, mỗi hàng 7 phim
+            } else if (items.length >= 21) {
+                items = items.slice(0, 21); // Đủ 3 hàng, mỗi hàng 7 phim
+            } else {
+                items = items.slice(0, 14); // Đủ 2 hàng, mỗi hàng 7 phim khít rịt
+            }
+        }
+
+        // Tính toán tổng số trang dựa trên dữ liệu thật
+        const totalItems = paginationInfo.totalItemsCount || 200;
+        const totalPages = Math.ceil(totalItems / 28) || 15;
 
         grid.innerHTML = '';
         if (items.length === 0) {
-            grid.innerHTML = '<p style="color:#aaa;">Danh mục này hiện tại không có phim hiển thị.</p>';
+            grid.innerHTML = '<p style="color:#aaa;">Danh mục này đang cập nhật phim.</p>';
             if (paginationContainer) paginationContainer.innerHTML = '';
             return;
         }
 
-        // Định dạng ảnh và dựng loạt phim ra giao diện vuông vắn nhiều hàng
+        // Tạo layout lưới phim đồng bộ bo góc cực nét
         items.forEach(item => {
             let img = item.thumb_url || '';
             if (img && !img.startsWith('http')) {
@@ -111,22 +122,21 @@ async function loadCategoryPageData(type, page) {
             grid.appendChild(card);
         });
 
-        // DỰNG THANH ĐIỀU HƯỚNG PHÂN TRANG (PAGINATION)
+        // Cập nhật lại thanh điều hướng trang ở dưới cùng
         if (paginationContainer) {
             renderPaginationControls(paginationContainer, type, page, totalPages);
         }
 
     } catch (e) { 
-        console.error("Lỗi cào dữ liệu phân trang loạt phim:", e); 
-        grid.innerHTML = '<p style="color:#e50914;">Lỗi kết nối máy chủ dữ liệu phim. Duy thử tải lại trang xem nhé!</p>';
+        console.error("Lỗi đồng bộ dữ liệu phim:", e); 
+        grid.innerHTML = '<p style="color:#e50914;">Lỗi kết nối rạp phim. Duy nhấn F5 tải lại trang xem nhé!</p>';
     }
 }
 
-// Hàm vẽ các nút Trang trước, 1, 2, 3, Trang sau động
+// Vẽ thanh phân trang động mượt mà
 function renderPaginationControls(container, type, currentPage, totalPages) {
     container.innerHTML = '';
 
-    // Nút về trang trước (Prev)
     const prevBtn = document.createElement('button');
     prevBtn.className = 'page-btn';
     prevBtn.innerText = '❮ Trước';
@@ -134,7 +144,6 @@ function renderPaginationControls(container, type, currentPage, totalPages) {
     prevBtn.onclick = () => window.location.href = `category.html?type=${type}&page=${currentPage - 1}`;
     container.appendChild(prevBtn);
 
-    // Thuật toán hiển thị giới hạn các nút số trang xung quanh trang hiện tại để không bị tràn màn hình
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(totalPages, startPage + 4);
     if (endPage - startPage < 4) {
@@ -142,6 +151,7 @@ function renderPaginationControls(container, type, currentPage, totalPages) {
     }
 
     for (let i = startPage; i <= endPage; i++) {
+        if (i < 1) continue;
         const pageBtn = document.createElement('button');
         pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
         pageBtn.innerText = i;
@@ -149,7 +159,6 @@ function renderPaginationControls(container, type, currentPage, totalPages) {
         container.appendChild(pageBtn);
     }
 
-    // Nút sang trang sau (Next)
     const nextBtn = document.createElement('button');
     nextBtn.className = 'page-btn';
     nextBtn.innerText = 'Sau ❯';
@@ -158,7 +167,7 @@ function renderPaginationControls(container, type, currentPage, totalPages) {
     container.appendChild(nextBtn);
 }
 
-// --- TẢI TRANG CHỦ INDEX.HTML ---
+// --- TẢI PHIM TRANG CHỦ INDEX.HTML ---
 async function loadMoviesFromServer() {
     try {
         const response = await fetch('https://cinematic-3gsh.onrender.com/api/movies');
