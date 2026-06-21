@@ -19,6 +19,12 @@
         .btn-play-now { background: #e50914; color: white; }
         .btn-play-now:hover { background: #b20710; }
         .btn-fav-add { background: rgba(255,255,255,0.08); color: white; border: 1px solid rgba(255,255,255,0.2); }
+        
+        /* ÉP LOGO KHÔNG BỊ MÀU XANH GẠCH CHÂN */
+        .header-left .logo {
+            color: #ffffff !important;
+            text-decoration: none !important;
+        }
     </style>
 </head>
 <body>
@@ -51,7 +57,7 @@
                     <li>Số tập: <span id="infoTotalEps">Đang tải...</span></li>
                     <li>Trạng thái hiện tại: <span id="infoCurrentState" style="color: #ff333f;">Đang tải...</span></li>
                     <li>Ngôn ngữ: <span>Vietsub</span></li>
-                    <li>Cập nhật: <span id="infoUpdateDate">20/06/2026</span></li>
+                    <li>Cập nhật: <span id="infoUpdateDate">21/06/2026</span></li>
                 </ul>
             </div>
 
@@ -64,7 +70,7 @@
                 <div class="info-block">
                     <h3>📺 Chọn Tập Để Xem Ngay</h3>
                     <div class="episode-list" id="detailEpisodeGrid" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;">
-                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -74,28 +80,33 @@
         let firstEpisodeLink = '';
 
         document.addEventListener("DOMContentLoaded", async () => {
-            // Lấy từ khóa Slug truyền sang từ URL thông qua index.html
             const urlParams = new URLSearchParams(window.location.search);
             const slug = urlParams.get('slug');
             if (!slug) { window.location.href = 'index.html'; return; }
 
             try {
-                // 1. Gọi sang backend lấy chi tiết phim
-                const res = await fetch(`http://localhost:5000/api/movie-detail?slug=${slug}`);
+                // 1. ĐỔI THÀNH LINK RENDER THẬT CỦA DUY ĐỂ LẤY NỘI DUNG VÀ TẬP PHIM
+                const res = await fetch(`https://cinematic-3gsh.onrender.com/api/movie-detail?slug=${slug}`);
                 const data = await res.json();
 
-                // 2. Tái tạo thông tin phim từ bộ nhớ tạm localStorage (Tên phim, ảnh nền)
-                const activeMovieInfo = JSON.parse(localStorage.getItem('activeMovieInfo')) || {};
+                // 2. ÉP LẤY THÔNG TIN POSTER + TIÊU ĐỀ THẬT TỪ API GỐC (Phòng hờ localStorage bị trống)
+                const rawRes = await fetch(`https://ophim1.com/phim/${slug}`);
+                const rawData = await rawRes.json();
                 
-                document.getElementById('detailTitle').textContent = activeMovieInfo.title || "Tên Phim";
-                document.getElementById('detailPoster').src = activeMovieInfo.image_url || "";
+                if (rawData.movie) {
+                    document.getElementById('detailTitle').textContent = rawData.movie.name;
+                    
+                    let imgUrl = rawData.movie.thumb_url;
+                    if (!imgUrl.startsWith('http')) imgUrl = `https://img.ophim.live/uploads/movies/${imgUrl}`;
+                    document.getElementById('detailPoster').src = imgUrl;
+                    
+                    document.getElementById('infoCurrentState').textContent = rawData.movie.episode_current || "FULL";
+                }
+                
                 document.getElementById('detailDesc').textContent = data.description || "Không có mô tả.";
-                
-                // Điền thông số phụ
                 document.getElementById('infoTotalEps').textContent = data.episodes?.length ? `${data.episodes.length} tập` : "1 tập";
-                document.getElementById('infoCurrentState').textContent = activeMovieInfo.label || "FULL";
 
-                // 3. Đổ danh sách tập phim ra ô lưới dạng vuông xịn sò
+                // 3. Đổ danh sách tập phim dạng ô vuông
                 const epGrid = document.getElementById('detailEpisodeGrid');
                 epGrid.innerHTML = '';
 
@@ -104,25 +115,24 @@
                     return;
                 }
 
-                // Ghi nhớ tập đầu tiên cho nút to bấm phát nhanh
                 firstEpisodeLink = data.episodes[0].link;
 
                 data.episodes.forEach((ep, index) => {
                     const btn = document.createElement('button');
                     btn.className = 'btn-episode';
-                    btn.style.cssText = 'padding: 10px 20px; background: #222225; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; min-width: 75px;';
+                    btn.style.cssText = 'padding: 10px 20px; background: #222225; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; min-width: 75px; transition: 0.2s;';
                     btn.textContent = `Tập ${ep.name}`;
                     
+                    btn.onmouseover = () => { if(btn.style.background !== 'rgb(229, 9, 20)') btn.style.background = '#333'; };
+                    btn.onmouseout = () => { if(btn.style.background !== 'rgb(229, 9, 20)') btn.style.background = '#222225'; };
+                    
                     btn.onclick = () => {
-                        // Bật khung phát video lên và mở tập tương ứng
                         document.getElementById('playerWrapper').style.display = 'block';
                         document.getElementById('detailVideoPlayer').src = ep.link;
                         
-                        // Đổi màu làm nổi bật tập đang xem
                         document.querySelectorAll('.btn-episode').forEach(b => b.style.background = '#222225');
                         btn.style.background = '#e50914';
                         
-                        // Cuộn màn hình lên trên cùng chỗ phát phim cho mượt
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     };
                     epGrid.appendChild(btn);
